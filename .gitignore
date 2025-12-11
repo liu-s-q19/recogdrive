@@ -1,0 +1,61 @@
+# python
+*.pyc
+**/__pycache__/
+.pytest_cache/*
+.pydevproject
+
+# IDE
+.vscode/*
+
+# Pip
+*.egg-info
+
+# files
+*.log
+*.pkl
+*.jpg
+*.pcd
+
+# Mac 系统产生的垃圾文件 (我看你用了 Mac 或读取过 Mac 的文件)
+.DS_Store
+
+# VS Code 的个人配置文件夹
+.vscode/
+
+# 重点：忽略模型权重文件 (通常很大)
+ckpt/
+checkpoints/
+*.pth
+*.pt
+*.safetensors
+*.bin
+*.weights
+
+# 忽略数据集 (通常很大)
+data/
+dataset/
+datasets/
+assets/images/  # 如果 assets 里全是图片数据，也可以忽略，看你需要
+
+# 忽略日志和输出结果
+logs/
+outputs/
+*.log
+wandb/
+
+# 忽略环境文件
+venv/
+env/
+.env
+
+# ... (之前的那些配置)
+
+# 忽略模型权重
+ckpt/
+*.pth
+
+# 忽略数据集
+data/
+
+# 新增：忽略实验输出目录
+exp/

@@ -1,0 +1,585 @@
+W1202 12:12:42.169452 295373 site-packages/torch/distributed/run.py:774] 
+W1202 12:12:42.169452 295373 site-packages/torch/distributed/run.py:774] *****************************************
+W1202 12:12:42.169452 295373 site-packages/torch/distributed/run.py:774] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1202 12:12:42.169452 295373 site-packages/torch/distributed/run.py:774] *****************************************
+[W1202 12:12:42.973293453 socket.cpp:755] [c10d] The client socket cannot be initialized to connect to [localhost]:29500 (errno: 97 - Address family not supported by protocol).
+W1202 12:12:45.712888 295373 site-packages/torch/distributed/elastic/agent/server/api.py:723] Received Signals.SIGINT death signal, shutting down workers
+W1202 12:12:45.713941 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295458 closing signal SIGINT
+W1202 12:12:45.714264 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295459 closing signal SIGINT
+Traceback (most recent call last):
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+W1202 12:12:45.714524 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295460 closing signal SIGINT
+Traceback (most recent call last):
+W1202 12:12:45.714788 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295461 closing signal SIGINT
+Traceback (most recent call last):
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+W1202 12:12:45.715228 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295462 closing signal SIGINT
+W1202 12:12:45.715511 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295463 closing signal SIGINT
+W1202 12:12:45.715739 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295464 closing signal SIGINT
+    import pytorch_lightning as plTraceback (most recent call last):
+W1202 12:12:45.716058 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295465 closing signal SIGINT
+    import pytorch_lightning as plTraceback (most recent call last):
+    import pytorch_lightning as pl
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+Traceback (most recent call last):
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+Traceback (most recent call last):
+
+    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+  File "/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/navsim/planning/script/run_dataset_caching_multi_node.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+
+            from lightning_fabric.fabric import Fabric  # noqa: E402    import pytorch_lightning as pl  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+from lightning_fabric.utilities.seed import seed_everything  # noqa: E402
+    import pytorch_lightning as pl    import pytorch_lightning as plimport pytorch_lightning as pl
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+    from lightning_fabric.fabric import Fabric  # noqa: E402  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+    from lightning_fabric.fabric import Fabric  # noqa: E402  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/pytorch_lightning/__init__.py", line 25, in <module>
+    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402    from lightning_fabric.utilities.seed import seed_everything  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator    from lightning_fabric.fabric import Fabric  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/__init__.py", line 35, in <module>
+    from lightning_fabric.fabric import Fabric  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+    from lightning_fabric.fabric import Fabric  # noqa: E402    from lightning_fabric.fabric import Fabric  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+    from lightning_fabric.accelerators.registry import _AcceleratorRegistry    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/fabric.py", line 38, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+    from lightning_fabric.accelerators.registry import _AcceleratorRegistry    from lightning_fabric.accelerators.accelerator import Accelerator    from lightning_fabric.accelerators.accelerator import Accelerator    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException    from lightning_fabric.accelerators.registry import _AcceleratorRegistry  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/__init__.py", line 15, in <module>
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+    from lightning_fabric.utilities.apply_func import move_data_to_device    from lightning_fabric.accelerators.registry import _AcceleratorRegistry
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+
+    from lightning_fabric.accelerators.accelerator import Accelerator
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+    from lightning_fabric.accelerators.registry import _AcceleratorRegistry
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+    from lightning_fabric.utilities.apply_func import move_data_to_device  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/accelerator.py", line 19, in <module>
+    from lightning_fabric.accelerators.registry import _AcceleratorRegistry
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE    from lightning_fabric.utilities.exceptions import MisconfigurationException
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException    from lightning_fabric.accelerators.registry import _AcceleratorRegistry
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/accelerators/registry.py", line 18, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")    from lightning_fabric.utilities.apply_func import move_data_to_device
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+    from lightning_fabric.utilities.exceptions import MisconfigurationException
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+    from lightning_fabric.utilities.apply_func import move_data_to_device
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")    from lightning_fabric.utilities.apply_func import move_data_to_device
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/__init__.py", line 16, in <module>
+    from lightning_fabric.utilities.apply_func import move_data_to_device
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    pkg = importlib.import_module(package)    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    from lightning_fabric.utilities.apply_func import move_data_to_device
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+    pkg = importlib.import_module(package)    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/apply_func.py", line 24, in <module>
+    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+    return _bootstrap._gcd_import(name[level:], package, level)    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+    from lightning_fabric.utilities.imports import _NUMPY_AVAILABLE
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+    return _bootstrap._gcd_import(name[level:], package, level)    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_fabric/utilities/imports.py", line 39, in <module>
+    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+    from torchmetrics import functional  # noqa: E402    pkg = importlib.import_module(package)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+
+    _TORCHMETRICS_GREATER_EQUAL_1_0_0 = compare_version("torchmetrics", operator.ge, "1.0.0")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+    pkg = importlib.import_module(package)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    from torchmetrics import functional  # noqa: E402  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/lightning_utilities/core/imports.py", line 78, in compare_version
+    pkg = importlib.import_module(package)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    from torchmetrics.functional.image._deprecated import (    return _bootstrap._gcd_import(name[level:], package, level)
+    pkg = importlib.import_module(package)    pkg = importlib.import_module(package)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+    from torchmetrics.functional.image.arniqa import arniqa    from torchmetrics import functional  # noqa: E402    from torchmetrics.functional.image._deprecated import (  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+    from torchmetrics import functional  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+    from torchmetrics import functional  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+    from torchvision import transforms    from torchmetrics.functional.image._deprecated import (    
+    
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+    from torchmetrics.functional.image._deprecated import (
+
+from torchmetrics.functional.image.arniqa import arniqa  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/__init__.py", line 37, in <module>
+from torchmetrics import functional  # noqa: E402        from torchmetrics.functional.image._deprecated import (
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+
+
+from torchmetrics import functional  # noqa: E402
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+      File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/__init__.py", line 56, in <module>
+      File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip        from torchvision import transforms    from torchmetrics.functional.image._deprecated import (    from torchmetrics.functional.image._deprecated import (from torchmetrics.functional.image.arniqa import arniqa
+    from torchmetrics.functional.image.arniqa import arniqa
+from torchmetrics.functional.image.arniqa import arniqa
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+    
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+
+    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/__init__.py", line 14, in <module>
+from torchmetrics.functional.image.arniqa import arniqa
+    from torchvision import transforms    from torchvision import transforms  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+    from .convnext import *
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+    from torchmetrics.functional.image.arniqa import arniqa  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+
+
+    from torchvision import transforms
+    from .convnext import *
+    from torchvision import transforms  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchmetrics/functional/image/arniqa.py", line 31, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+    from ..ops.misc import Conv2dNormActivation, Permute    from ..ops.misc import Conv2dNormActivation, Permute    from torchvision import transforms    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+
+    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip
+
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+    from .convnext import *  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/__init__.py", line 10, in <module>
+    from .convnext import *
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+    from .convnext import *  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+    from .poolers import MultiScaleRoIAlign    from .poolers import MultiScaleRoIAlign    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+    from ..ops.misc import Conv2dNormActivation, Permute
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+    from .convnext import *
+
+
+    from ..ops.misc import Conv2dNormActivation, Permute
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+    from ..ops.misc import Conv2dNormActivation, Permute
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/__init__.py", line 2, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+    from .poolers import MultiScaleRoIAlign
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+    from .roi_align import roi_align    from .roi_align import roi_align    from .convnext import *    from .poolers import MultiScaleRoIAlign
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+    from ..ops.misc import Conv2dNormActivation, Permute
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/models/convnext.py", line 9, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+    from .roi_align import roi_align    from .poolers import MultiScaleRoIAlign
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+    from torch._dynamo.utils import is_compile_supported    from ..ops.misc import Conv2dNormActivation, Permute    from .roi_align import roi_align
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+
+    from .poolers import MultiScaleRoIAlign    from torch._dynamo.utils import is_compile_supported
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+    from torch._dynamo.utils import is_compile_supported  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+
+
+    from . import config, convert_frame, eval_frame, resume_execution  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/__init__.py", line 23, in <module>
+    from torch._dynamo.utils import is_compile_supported
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+      File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+
+    from .poolers import MultiScaleRoIAlign
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+    from . import config, convert_frame, eval_frame, resume_execution    from .roi_align import roi_alignfrom .roi_align import roi_align    from . import config, convert_frame, eval_frame, resume_execution  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+
+    from . import config, convert_frame, eval_frame, resume_execution
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+
+
+
+    from torch._dynamo.symbolic_convert import TensorifyState  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/poolers.py", line 10, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+    from torch._dynamo.symbolic_convert import TensorifyState  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+
+    from .roi_align import roi_align    from torch._dynamo.symbolic_convert import TensorifyState
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+    from torch._dynamo.utils import is_compile_supported    from torch._dynamo.utils import is_compile_supported    from torch._dynamo.symbolic_convert import TensorifyState  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torchvision/ops/roi_align.py", line 7, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis
+
+
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis    from torch._dynamo.utils import is_compile_supported    from torch._dynamo.exc import TensorifyScalarRestartAnalysis
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+    from .utils import counters    from . import config, convert_frame, eval_frame, resume_execution    from . import config, convert_frame, eval_frame, resume_execution    from torch._dynamo.exc import TensorifyScalarRestartAnalysis  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/__init__.py", line 13, in <module>
+    from .utils import counters
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 2341, in <module>
+
+
+
+    from .utils import counters    from . import config, convert_frame, eval_frame, resume_execution
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+      File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 2341, in <module>
+    if has_triton_package():
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/convert_frame.py", line 53, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 69, in <module>
+    from torch._dynamo.symbolic_convert import TensorifyStatefrom torch._dynamo.symbolic_convert import TensorifyState
+    from .utils import counters
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/utils/_triton.py", line 9, in has_triton_package
+    from torch._dynamo.symbolic_convert import TensorifyState    import torch.fx.experimental.symbolic_shapes    if has_triton_package():
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 116, in <module>
+        
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/symbolic_convert.py", line 52, in <module>
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysisfrom triton.compiler.compiler import triton_key
+import torch._numpy as tnp
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/fx/experimental/symbolic_shapes.py", line 2742, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/utils/_triton.py", line 9, in has_triton_package
+    from torch._dynamo.exc import TensorifyScalarRestartAnalysis
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/__init__.py", line 8, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_numpy/__init__.py", line 3, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+    from triton.compiler.compiler import triton_key
+    from .utils import counters    class _ShapeGuardsHelper:    from .runtime import (    from . import fft, linalg, random    from .utils import counters
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/__init__.py", line 8, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/exc.py", line 41, in <module>
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 1013, in wrap
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/__init__.py", line 1, in <module>
+
+    
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 2341, in <module>
+    from .runtime import (    from .utils import counters  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 2341, in <module>
+    from .autotuner import (Autotuner, Config, Heuristics, autotune, heuristics)  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_numpy/fft.py", line 10, in <module>
+return _process_class(cls, init, repr, eq, order, unsafe_hash, frozen)
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/__init__.py", line 1, in <module>
+
+    if has_triton_package():
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/autotuner.py", line 12, in <module>
+    from ._normalizations import ArrayLike, normalizer  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 975, in _process_class
+    if has_triton_package():    from .autotuner import (Autotuner, Config, Heuristics, autotune, heuristics)  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_dynamo/utils.py", line 2341, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/utils/_triton.py", line 9, in has_triton_package
+    from .jit import KernelInterface
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/_numpy/_normalizations.py", line 14, in <module>
+
+    for fn in _frozen_get_del_attr(cls, field_list, globals):
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/autotuner.py", line 12, in <module>
+    from triton.compiler.compiler import triton_key
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/jit.py", line 17, in <module>
+    if has_triton_package():    from . import _dtypes, _dtypes_impl, _util  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/utils/_triton.py", line 9, in has_triton_package
+
+    from .jit import KernelInterface
+  File "<frozen importlib._bootstrap>", line 1007, in _find_and_load
+    from ..runtime.driver import driver
+
+    from triton.compiler.compiler import triton_key  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 565, in _frozen_get_del_attr
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/jit.py", line 17, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/driver.py", line 3, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/utils/_triton.py", line 9, in has_triton_package
+  File "<frozen importlib._bootstrap>", line 1007, in _find_and_load
+
+    _create_fn('__delattr__',    from ..runtime.driver import driver    from ..backends import backends, DriverBase    from triton.compiler.compiler import triton_key  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/__init__.py", line 8, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 400, in _create_fn
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/driver.py", line 3, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/__init__.py", line 13, in <module>
+
+    from .runtime import (    exec(txt, globals, ns)    from ..backends import backends, DriverBase    from importlib_metadata import entry_points  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/__init__.py", line 8, in <module>
+
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/__init__.py", line 47, in <module>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/__init__.py", line 42, in <module>
+    from .runtime import (  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/__init__.py", line 1, in <module>
+  File "<string>", line 1, in <module>
+    backends: dict[str, Backend] = _discover_backends()    from .compat import py39, py311
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/__init__.py", line 1, in <module>
+    from .autotuner import (Autotuner, Config, Heuristics, autotune, heuristics)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/__init__.py", line 40, in _discover_backends
+
+  File "<frozen importlib._bootstrap>", line 1007, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 986, in _find_and_load_unlocked
+    from .autotuner import (Autotuner, Config, Heuristics, autotune, heuristics)
+    compiler = importlib.import_module(f"{ep.value}.compiler")
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/autotuner.py", line 12, in <module>
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/autotuner.py", line 12, in <module>
+  File "<frozen importlib._bootstrap>", line 986, in _find_and_load_unlocked
+
+    from .jit import KernelInterface    from .jit import KernelInterface  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/importlib/__init__.py", line 127, in import_module
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/jit.py", line 17, in <module>
+    return _bootstrap._gcd_import(name[level:], package, level)  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/jit.py", line 14, in <module>
+    from ..runtime.driver import driver
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/amd/compiler.py", line 30, in <module>
+    from triton.tools.tensor_descriptor import TensorDescriptor
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/runtime/driver.py", line 3, in <module>
+    class HIPOptions:
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/tools/tensor_descriptor.py", line 7, in <module>
+    from ..backends import backends, DriverBase
+    class TensorDescriptor:KeyboardInterrupt
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 1013, in wrap
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 1021, in dataclass
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/__init__.py", line 47, in <module>
+    return _process_class(cls, init, repr, eq, order, unsafe_hash, frozen)    backends: dict[str, Backend] = _discover_backends()    return wrap(cls)
+
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 863, in _process_class
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/triton/backends/__init__.py", line 39, in _discover_backends
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 1013, in wrap
+      File "<frozen importlib._bootstrap>", line 680, in _load_unlocked
+    for ep in entry_points().select(group="triton.backends"):cls_fields = [_get_field(cls, name, type)
+    return _process_class(cls, init, repr, eq, order, unsafe_hash, frozen)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 863, in <listcomp>
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 944, in _process_class
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/__init__.py", line 1094, in entry_points
+  File "<frozen importlib._bootstrap>", line 680, in _load_unlocked
+        cls_fields = [_get_field(cls, name, type)_set_new_attribute(cls, '__repr__', _repr_fn(flds, globals))
+    return EntryPoints(eps).select(**params)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 685, in _get_field
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 540, in _repr_fn
+
+    f = field(default=default)  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/__init__.py", line 1091, in <genexpr>
+    fn = _create_fn('__repr__',
+    
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 400, in _create_fn
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 340, in field
+eps = itertools.chain.from_iterable(        exec(txt, globals, ns)
+return Field(default, default_factory, init, repr, hash, compare,
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/_itertools.py", line 17, in unique_everseen
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/dataclasses.py", line 257, in __init__
+  File "<string>", line 1, in <module>
+    k = key(element)    self._field_type = None
+
+  File "<frozen importlib._bootstrap_external>", line 846, in exec_module
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/compat/py39.py", line 23, in normalized_name
+KeyboardInterrupt    return dist._normalized_name
+
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/importlib_metadata/__init__.py", line 1015, in _normalized_name
+    pass_none(Prepared.normalize)(self._name_from_stem(stem))
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 846, in exec_module
+  File "<frozen importlib._bootstrap>", line 982, in _find_and_load_unlocked
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 978, in get_code
+KeyboardInterrupt
+  File "<frozen importlib._bootstrap_external>", line 978, in get_code
+  File "<frozen importlib._bootstrap_external>", line 647, in _compile_bytecode
+  File "<frozen importlib._bootstrap_external>", line 647, in _compile_bytecode
+KeyboardInterrupt
+KeyboardInterrupt
+W1202 12:12:45.920091 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295458 closing signal SIGTERM
+W1202 12:12:45.920727 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295459 closing signal SIGTERM
+W1202 12:12:45.921019 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295460 closing signal SIGTERM
+W1202 12:12:45.921253 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295461 closing signal SIGTERM
+W1202 12:12:45.921523 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295462 closing signal SIGTERM
+W1202 12:12:45.921767 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295463 closing signal SIGTERM
+W1202 12:12:45.921980 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295464 closing signal SIGTERM
+W1202 12:12:45.922180 295373 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 295465 closing signal SIGTERM
+Traceback (most recent call last):
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 715, in run
+    result = self._invoke_run(role)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 879, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 295373 got signal: 2
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/luban/miniconda3/envs/navsim/bin/torchrun", line 8, in <module>
+    sys.exit(main())
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 357, in wrapper
+    return f(*args, **kwargs)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/run.py", line 901, in main
+    run(args)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 143, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/launcher/api.py", line 268, in launch_agent
+    result = agent.run()
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/metrics/api.py", line 138, in wrapper
+    result = f(*args, **kwargs)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/api.py", line 724, in run
+    self._shutdown(e.sigval)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 368, in _shutdown
+    self._pcontext.close(death_sig)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 577, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 912, in _close
+    handler.proc.wait(time_to_wait)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/subprocess.py", line 1189, in wait
+    return self._wait(timeout=timeout)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/subprocess.py", line 1927, in _wait
+    time.sleep(delay)
+  File "/home/luban/miniconda3/envs/navsim/lib/python3.9/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 295373 got signal: 2
