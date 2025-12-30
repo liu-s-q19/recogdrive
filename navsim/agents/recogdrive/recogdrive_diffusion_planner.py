@@ -1,16 +1,3 @@
-# Copyright 2025 The Xiaomi Corporation. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 import copy
 import lzma
 import math
@@ -185,8 +172,6 @@ class ReCogDriveDiffusionPlanner(nn.Module):
         elif self.config.sampling_method == 'ddim':
             self._init_ddim_sampler(config.ddim_cfg)
 
-        if config.grpo:
-            self._init_grpo(config.grpo_cfg)
 
     def _init_flow_sampler(self, cfg: FlowConfig):
         """Initializes components required for Flow Matching."""
@@ -259,46 +244,6 @@ class ReCogDriveDiffusionPlanner(nn.Module):
         flip_buffer('ddim_sqrt_one_minus_alphas', ddim_sqrt_one_minus_alphas)
         flip_buffer('ddim_sigmas', ddim_sigmas)
 
-    def _init_grpo(self, cfg: GRPOConfig):
-        """Initializes components and hyperparameters for GRPO training."""
-        self.denoised_clip_value = cfg.denoised_clip_value
-        self.eval_randn_clip_value = cfg.eval_randn_clip_value
-        self.randn_clip_value = cfg.randn_clip_value
-        self.final_action_clip_value = cfg.final_action_clip_value
-        self.eps_clip_value = cfg.eps_clip_value
-        self.eval_min_sampling_denoising_std = cfg.eval_min_sampling_denoising_std
-        self.min_sampling_denoising_std = cfg.min_sampling_denoising_std
-        self.min_logprob_denoising_std = cfg.min_logprob_denoising_std
-        self.clip_advantage_lower_quantile = cfg.clip_advantage_lower_quantile
-        self.clip_advantage_upper_quantile = cfg.clip_advantage_upper_quantile
-        self.gamma_denoising = cfg.gamma_denoising
-        
-        self.metric_cache_loader = MetricCacheLoader(Path(cfg.metric_cache_path))
-        proposal_sampling = TrajectorySampling(time_horizon=4, interval_length=0.1)
-        self.simulator = PDMSimulator(proposal_sampling)
-        self.train_scorer = PDMScorer(proposal_sampling, cfg.scorer_config)
-        
-        try:
-            state_dict = torch.load(cfg.reference_policy_checkpoint, map_location="cpu",weights_only=False)["state_dict"]
-            model_dict = self.state_dict()
-            filtered_ckpt = {}
-            for k, v in state_dict.items():
-                if k.startswith("agent.action_head."):
-                    k2 = k[len("agent.action_head."):]
-                else:
-                    k2 = k
-                if k2 in model_dict and v.shape == model_dict[k2].shape:
-                    filtered_ckpt[k2] = v
-                else:
-                    print(f"Skip loading '{k}' → '{k2}' (checkpoint shape {tuple(v.shape)} vs model shape {tuple(model_dict.get(k2, v).shape)})")
-            self.load_state_dict(filtered_ckpt, strict=True)
-        except FileNotFoundError:
-            print(f"Warning: GRPO checkpoint not found at {cfg.reference_policy_checkpoint}. Skipping loading.")
-        
-        self.old_policy = copy.deepcopy(self)
-        self.old_policy.eval()
-        for param in self.old_policy.parameters():
-            param.requires_grad = False
 
     @staticmethod
     def cosine_beta_schedule(timesteps: int, s: float = 0.008, dtype: torch.dtype = torch.float32) -> torch.Tensor:
@@ -822,77 +767,6 @@ class ReCogDriveDiffusionPlanner(nn.Module):
         
         return log_prob
 
-    def forward_grpo(
-        self,
-        vl_features: torch.Tensor,
-        action_input: BatchFeature,
-        tokens_list,
-        sample_time: int = 8,
-        deterministic=False,
-        bc_coeff: float = 0.1,
-        use_bc_loss: bool = True
-    ) -> BatchFeature:
-        """Computes the Diffusion-GRPO loss."""
-        self.set_frozen_modules_to_eval_mode()
-        B = vl_features.shape[0]
-        G = sample_time 
-
-        vl_features_rep = vl_features.repeat_interleave(G, 0)
-        his_traj_rep = action_input.his_traj.repeat_interleave(G, 0)
-        status_feature_rep = action_input.status_feature.repeat_interleave(G, 0)
-
-        chains, trajs = self.sample_chain(
-            vl_features_rep, his_traj_rep, status_feature_rep, deterministic=False
-        )
-
-        tokens_rep = [tok for tok in tokens_list for _ in range(G)]
-        unique_tokens = set(tokens_list)
-        metric_cache = {}
-        for token in unique_tokens:
-            path = self.metric_cache_loader.metric_cache_paths[token]
-            with lzma.open(path, 'rb') as f:
-                metric_cache[token] = pickle.load(f)
-        rewards = self.reward_fn(trajs, tokens_rep, metric_cache)
-
-        rewards_matrix = rewards.view(B, G)
-        mean_r = rewards_matrix.mean(dim=1, keepdim=True)
-        std_r = rewards_matrix.std(dim=1, keepdim=True) + 1e-8
-        advantages = ((rewards_matrix - mean_r) / std_r).view(-1).detach()
-        
-        adv_min = torch.quantile(advantages, self.clip_advantage_lower_quantile)
-        adv_max = torch.quantile(advantages, self.clip_advantage_upper_quantile)
-        advantages = advantages.clamp(min=adv_min, max=adv_max)
-
-        num_denoising_steps = chains.shape[1] - 1
-        denoising_indices = torch.arange(num_denoising_steps, device=advantages.device)
-        discount = (self.gamma_denoising ** (num_denoising_steps - denoising_indices - 1))
-    
-        
-        adv_steps = advantages.view(B, G, 1).expand(-1, -1, num_denoising_steps)  
-        discount = discount.view(1, 1, num_denoising_steps).expand(B, G, num_denoising_steps)  
-        adv_weighted_flat = (adv_steps * discount).reshape(-1)             
-
-        log_probs = self.get_logprobs(vl_features_rep, his_traj_rep, status_feature_rep, chains, deterministic=False)
-        log_probs = log_probs.clamp(min=-5, max=2).mean(dim=[1, 2])
-        
-        policy_loss = -torch.mean(log_probs * adv_weighted_flat)
-        total_loss = policy_loss
-
-        bc_loss = 0.0
-        if use_bc_loss:
-            with torch.no_grad():
-                teacher_chains, _ = self.old_policy.sample_chain(
-                    vl_features, action_input.his_traj, action_input.status_feature, deterministic=False
-                )
-            bc_logp = self.get_logprobs(vl_features, action_input.his_traj, action_input.status_feature, teacher_chains, deterministic=False)
-            bc_logp = bc_logp.clamp(min=-5, max=2)
-            K_steps = chains.shape[1] - 1
-            bc_logp = bc_logp.view(-1, K_steps, chains.shape[2], chains.shape[3]).mean(dim=[1,2,3])
-            bc_loss = -bc_logp.mean()
-            total_loss = total_loss + bc_coeff * bc_loss
-
-        return BatchFeature(data={"loss": total_loss, "reward": rewards.mean(), "policy_loss": policy_loss, "bc_loss": bc_loss})
-
     def norm_odo(self, trajectory: torch.Tensor) -> torch.Tensor:
         """Normalizes trajectory coordinates and heading to the range [-1, 1]."""
         x = 2 * (trajectory[..., 0:1] + 1.57) / 66.74 - 1
@@ -907,27 +781,6 @@ class ReCogDriveDiffusionPlanner(nn.Module):
         heading = (normalized_trajectory[..., 2:3] + 1) / 2 * 3.53 - 1.67
         return torch.cat([x, y, heading], dim=-1)
 
-    def reward_fn(
-        self,
-        pred_traj: torch.Tensor,
-        tokens_list,
-        cache_dict,
-    ) -> torch.Tensor:
-        """Calculates PDM scores for a batch of predicted trajectories."""
-        pred_np = pred_traj.detach().cpu().numpy()
-        rewards = []
-        for i, token in enumerate(tokens_list):
-            trajectory = Trajectory(pred_np[i])
-            metric_cache = cache_dict[token]
-            pdm_result = pdm_score(
-                metric_cache=metric_cache,
-                model_trajectory=trajectory,
-                future_sampling=self.simulator.proposal_sampling,
-                simulator=self.simulator,
-                scorer=self.train_scorer,
-            )
-            rewards.append(asdict(pdm_result)["score"])
-        return torch.tensor(rewards, device=pred_traj.device, dtype=pred_traj.dtype).detach()
 
     @property
     def device(self):

@@ -1,13 +1,15 @@
 #!/bin/bash
+# set -xeuo pipefail
+# export ADDR2LINE="/home/luban/miniconda3/envs/navsim/bin/x86_64-conda-linux-gnu-addr2line"
 # 加载 conda 配置
 source /home/luban/miniconda3/etc/profile.d/conda.sh
 # 激活你的虚拟环境
 conda activate navsim
 # 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive
+cd /nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive
 
 # ----------------- 1. 核心路径配置 (映射你的真实NFS路径) -----------------
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
+PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive"
 TRAIN_TEST_SPLIT=navtrain
 
 # 环境变量
@@ -30,7 +32,7 @@ METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 CHECKPOINT="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
 
 # [输出] Stage 3 RL 结果目录
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage3_rl_training_16gpus_bs8"
+OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage3_test"
 
 # ----------------- 2. 自动化分布式配置 (适配 MLP/Luban) -----------------
 # 你的环境是 2机16卡，所以每节点8卡

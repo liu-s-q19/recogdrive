@@ -1,9 +1,9 @@
 TRAIN_TEST_SPLIT=navtrain
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/data/navsim/maps"
-export NAVSIM_EXP_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/exp"
-export NAVSIM_DEVKIT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
-export OPENSCENE_DATA_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/data/navsim"
+export NUPLAN_MAPS_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive_rl/data/navsim/maps"
+export NAVSIM_EXP_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive_rl/cache"
+export NAVSIM_DEVKIT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive_rl"
+export OPENSCENE_DATA_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive_rl/data/navsim"
 CACHE_PATH=$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train
 
 export NCCL_IB_DISABLE=0

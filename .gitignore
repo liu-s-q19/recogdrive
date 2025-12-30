@@ -16,13 +16,12 @@
 *.jpg
 *.pcd
 
-# Mac 系统产生的垃圾文件 (我看你用了 Mac 或读取过 Mac 的文件)
+# Mac 系统产生的垃圾文件
 .DS_Store
 
 # VS Code 的个人配置文件夹
 .vscode/
 
-# 重点：忽略模型权重文件 (通常很大)
 ckpt/
 checkpoints/
 *.pth
@@ -31,7 +30,7 @@ checkpoints/
 *.bin
 *.weights
 
-# 忽略数据集 (通常很大)
+# 忽略数据
 data/
 dataset/
 datasets/
@@ -61,3 +60,7 @@ data/
 exp/
 
 navsim copy/
+data/
+cache/
+outputs/
+infer_latencytest/

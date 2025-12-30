@@ -25,7 +25,7 @@ from .recogdrive_diffusion_planner import (  # 【核心】第二部分：扩散
     ReCogDriveDiffusionPlanner,
     ReCogDriveDiffusionPlannerConfig,
 )
-#from .recogdrive_rl_algo import GRPOAlgorithm
+from .recogdrive_rl_algo import GRPOAlgorithm
 
 class ReCogDriveAgent(AbstractAgent):
     """
@@ -108,14 +108,14 @@ class ReCogDriveAgent(AbstractAgent):
         # 推理时的一些配置
         self.num_inference_samples = 1
         self.inference_selection_mode = "median"
-        
-        # # 【重点修改】GRPO 算法初始化逻辑
-        # self.rl_algo = None
-        # if self.grpo:
-        #     # 实例化 GRPOAlgorithm
-        #     # 注意：参数注入和权重加载现在都会在 GRPOAlgorithm.__init__ 内部自动完成
-        #     # 所以这里非常干净，只需要传入配置和模型即可
-        #     self.rl_algo = GRPOAlgorithm(cfg.grpo_cfg, self.action_head)
+
+        # GRPO 算法初始化逻辑
+        self.rl_algo = None
+        if self.grpo:
+            # 实例化GRPOAlgorithm
+            # 参数注入和权重加载现在都会在 GRPOAlgorithm.__init__ 内部自动完成
+            # 保证这里的干净，只需要传入配置和模型即可
+            self.rl_algo = GRPOAlgorithm(cfg.grpo_cfg, self.action_head)
 
     def name(self) -> str:
         return self.__class__.__name__
@@ -255,57 +255,55 @@ class ReCogDriveAgent(AbstractAgent):
         
         
         # --- 4. 运行扩散规划器 (Action Head) ---
-        
         # 根据是训练、GRPO训练还是推理，调用 'action_head' 不同方法
+        # if self.training and not self.grpo:
+        #     # 【阶段二：标准训练模式】
+        #     # 将 'input_state' 和 VLM 特征（作为 condition）
+        #     # 以及目标轨迹 'targets["trajectory"]' 传给规划器
+        #     action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
+        #     # action_head 的 forward 会计算 diffusion loss
+        #     return self.action_head(last_hidden_state, action_inputs)
         
-        if self.training and not self.grpo:
-            # 【阶段二：标准训练模式】
-            # 将 'input_state' 和 VLM 特征（作为 condition）
-            # 以及目标轨迹 'targets["trajectory"]' 传给规划器
-            action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
-            # action_head 的 forward 会计算 diffusion loss
-            return self.action_head(last_hidden_state, action_inputs)
+        # elif self.training and self.grpo:
+        #     # 【阶段三：GRPO 训练模式】
+        #     action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
+        #     # 调用 GRPO 特定的前向传播
+        #     return self.action_head.forward_grpo(last_hidden_state, action_inputs, tokens_list)
         
-        elif self.training and self.grpo:
-            # 【阶段三：GRPO 训练模式】
-            action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
-            # 调用 GRPO 特定的前向传播
-            return self.action_head.forward_grpo(last_hidden_state, action_inputs, tokens_list)
+        # else: 
+        #     # 【推理模式】
+        #     # 只提供状态和 VLM 特征，不提供目标 'action'
+        #     action_inputs = BatchFeature({"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype)})
+        #     # 调用 'get_action' 来采样生成轨迹
+        #     return self.action_head.get_action(last_hidden_state.to(model_dtype), action_inputs)
         
-        else: 
-            # 【推理模式】
-            # 只提供状态和 VLM 特征，不提供目标 'action'
-            action_inputs = BatchFeature({"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype)})
-            # 调用 'get_action' 来采样生成轨迹
-            return self.action_head.get_action(last_hidden_state.to(model_dtype), action_inputs)
-        
-        # # 构造 input batch
-        # # 注意：这里我们统一一下，把 SFT 和 RL 的输入构造稍微整理得整洁一点
-        # if self.training:
-        #     action_inputs = BatchFeature(data={
-        #         "state": input_state.to(model_dtype), 
-        #         "his_traj": history_trajectory_reshaped.to(model_dtype), 
-        #         "status_feature": status_feature.to(model_dtype), 
-        #         "action": targets["trajectory"].to(model_dtype)
-        #     })
+        # 构造 input batch
+        # 这里我统一了一下，把 SFT 和 RL 的输入构造稍微整理得整洁一点
+        if self.training:
+            action_inputs = BatchFeature(data={
+                "state": input_state.to(model_dtype), 
+                "his_traj": history_trajectory_reshaped.to(model_dtype), 
+                "status_feature": status_feature.to(model_dtype), 
+                "action": targets["trajectory"].to(model_dtype)
+            })
 
-        #     if not self.grpo:
-        #         # SFT 路径
-        #         return self.action_head(last_hidden_state, action_inputs)
-        #     else:
-        #         # 【重点修改】GRPO 路径
-        #         # 不再调用 self.action_head.forward_grpo
-        #         # 而是调用 self.rl_algo.compute_loss
-        #         return self.rl_algo.compute_loss(
-        #             actor_model=self.action_head,
-        #             vl_features=last_hidden_state,
-        #             action_input=action_inputs,
-        #             tokens_list=tokens_list
-        #         )
-        # else:
-        #     # 推理路径不变
-        #         action_inputs = BatchFeature({"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype)})
-        #         return self.action_head.get_action(last_hidden_state.to(model_dtype), action_inputs)
+            if not self.grpo:
+                # SFT 路径
+                return self.action_head(last_hidden_state, action_inputs)
+            else:
+                # GRPO 路径
+                # 不再调用 self.action_head.forward_grpo
+                # 而是调用 self.rl_algo.compute_loss
+                return self.rl_algo.compute_loss(
+                    actor_model=self.action_head,
+                    vl_features=last_hidden_state,
+                    action_input=action_inputs,
+                    tokens_list=tokens_list
+                )
+        else:
+            # 推理路径不变
+                action_inputs = BatchFeature({"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype)})
+                return self.action_head.get_action(last_hidden_state.to(model_dtype), action_inputs)
     def compute_trajectory(self, features: Dict[str, torch.Tensor]) -> Trajectory:
         """
         在模拟器中进行推理（evaluation）的入口函数。

@@ -26,34 +26,34 @@ class GRPOAlgorithm(RLAlgorithm):
         super().__init__()
         self.cfg = config
         
-        # 1. 注入采样参数 (对应原代码 self.denoised_clip_value = ... 等)
+        # 注入采样参数
         sampling_params = [
             "denoised_clip_value", "eval_randn_clip_value", "randn_clip_value",
             "final_action_clip_value", "eps_clip_value", "eval_min_sampling_denoising_std",
             "min_sampling_denoising_std", "min_logprob_denoising_std"
         ]
-        print("[GRPO] Injecting sampling hyperparameters into Actor Model...")
+        print("Injecting sampling hyperparameters into Actor Model...")
         for param_key in sampling_params:
             if hasattr(config, param_key):
                 setattr(model_template, param_key, getattr(config, param_key))
 
-        # 2. 初始化缓存和评分器 (对应原代码 self.metric_cache_loader = ... 等)
+        # 初始化缓存和评分器
         self.clip_advantage_lower_quantile = config.clip_advantage_lower_quantile
         self.clip_advantage_upper_quantile = config.clip_advantage_upper_quantile
         self.gamma_denoising = config.gamma_denoising
-        
-        print(f"[GRPO] Loading Metric Cache from {config.metric_cache_path}...")
+
+        print(f"Loading Metric Cache from {config.metric_cache_path}")
         self.metric_cache_loader = MetricCacheLoader(Path(config.metric_cache_path))
         
         proposal_sampling = TrajectorySampling(time_horizon=4, interval_length=0.1)
         self.simulator = PDMSimulator(proposal_sampling)
         self.train_scorer = PDMScorer(proposal_sampling, config.scorer_config)
         
-        # 3. 加载权重 (对应原代码的 try...torch.load... 块)
+        # 3. 加载权重
         if config.reference_policy_checkpoint:
             print(f"[GRPO] Loading checkpoint from {config.reference_policy_checkpoint}")
             try:
-                state_dict = torch.load(config.reference_policy_checkpoint, map_location="cpu")["state_dict"]
+                state_dict = torch.load(config.reference_policy_checkpoint, map_location="cpu",weights_only=False)["state_dict"]
                 model_dict = model_template.state_dict()
                 filtered_ckpt = {}
                 for k, v in state_dict.items():
@@ -61,29 +61,28 @@ class GRPOAlgorithm(RLAlgorithm):
                     if k2 in model_dict and v.shape == model_dict[k2].shape:
                         filtered_ckpt[k2] = v
                     else:
-                        pass # 忽略不匹配的键
-                
-                # 加载到当前的主模型 (Student)
+                        pass # 忽略不匹配键
+                # 加载到当前的主模型
                 model_template.load_state_dict(filtered_ckpt, strict=True)
-                print("[GRPO] Successfully loaded weights into Actor Model.")
+                print("Successfully loaded weights into Actor Model.")
             except FileNotFoundError:
-                print(f"[GRPO] Warning: Checkpoint not found at {config.reference_policy_checkpoint}")
+                print(f"Warning: Checkpoint not found at {config.reference_policy_checkpoint}")
             except Exception as e:
-                print(f"[GRPO] Error loading checkpoint: {e}")
+                print(f"Error loading checkpoint: {e}")
 
-        # 4. 创建 Reference Model (对应原代码 self.old_policy = copy.deepcopy(self))
-        print("[GRPO] Initializing Reference Model (Old Policy)...")
+        # 4. 创建 Reference Model
+        print("Initializing Reference Model (Old Policy)...")
         self.ref_model = copy.deepcopy(model_template)
         self.ref_model.eval()
         for param in self.ref_model.parameters():
             param.requires_grad = False
             
-        print("[GRPO] Initialization Complete.")
+        print("Initialization Complete.")
 
     def compute_loss(self, actor_model: ReCogDriveDiffusionPlanner, vl_features: torch.Tensor, 
                      action_input: BatchFeature, tokens_list: List[str], sample_time: int = 8, 
                      bc_coeff: float = 0.1, use_bc_loss: bool = True) -> BatchFeature:
-        # 确保 Reference Model 在正确的设备上
+        # Reference Model
         if self.ref_model.device != actor_model.device:
             self.ref_model.to(actor_model.device)
 
@@ -104,7 +103,7 @@ class GRPOAlgorithm(RLAlgorithm):
         tokens_rep = [tok for tok in tokens_list for _ in range(G)]
         rewards = self._reward_fn(trajs, tokens_rep)
         
-        # 4. 优势计算 (GRPO核心)
+        # 4. 优势计算
         rewards_matrix = rewards.view(B, G)
         mean_r = rewards_matrix.mean(dim=1, keepdim=True)
         std_r = rewards_matrix.std(dim=1, keepdim=True) + 1e-8
