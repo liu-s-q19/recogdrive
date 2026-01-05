@@ -32,8 +32,7 @@ METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 CHECKPOINT="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
 
 # [输出] Stage 3 RL 结果目录
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/test_0105"
-EXP_NAME="test_0105"
+OUTPUT_DIR="$PROJECT_ROOT/outputs/rl_A_clamp5"
 
 # ----------------- 2. 自动化分布式配置 (适配 MLP/Luban) -----------------
 # 你的环境是 2机16卡，所以每节点8卡
@@ -77,8 +76,8 @@ export MASTER_PORT=$MASTER_PORT
 # ---------------- 4. GRPO 算法超参数 ----------------
 # 数值裁剪相关
 GRPO_GAMMA=0.6
-GRPO_CLIP_LOW=0.00   # 裁剪百分比下界
-GRPO_CLIP_HIGH=1.0  # 裁剪百分比上界
+GRPO_CLIP_LOW=0.05   # 裁剪百分比下界
+GRPO_CLIP_HIGH=0.95  # 裁剪百分比上界
 GRPO_RANDN_CLIP=5.0
 GRPO_DENOISED_CLIP=1.0
 
@@ -91,18 +90,7 @@ SCORE_PROGRESS=10.0
 SCORE_TTC=5.0
 SCORE_COMFORT=2.0
 
-    # +agent.grpo_cfg.gamma_denoising=${GRPO_GAMMA} \
-    # +agent.grpo_cfg.clip_advantage_lower_quantile=${GRPO_CLIP_LOW} \
-    # +agent.grpo_cfg.clip_advantage_upper_quantile=${GRPO_CLIP_HIGH} \
-    # +agent.grpo_cfg.randn_clip_value=${GRPO_RANDN_CLIP} \
-    # +agent.grpo_cfg.denoised_clip_value=${GRPO_DENOISED_CLIP} \
-    # +agent.grpo_cfg.min_sampling_denoising_std=${GRPO_MIN_SAMPLING_STD} \
-    # +agent.grpo_cfg.min_logprob_denoising_std=${GRPO_MIN_LOGPROB_STD} \
-    # \
-    # +agent.grpo_cfg.scorer_config.progress_weight=${SCORE_PROGRESS} \
-    # +agent.grpo_cfg.scorer_config.ttc_weight=${SCORE_TTC} \
-    # +agent.grpo_cfg.scorer_config.comfortable_weight=${SCORE_COMFORT} \
-    # \
+
 # ----------------- 5. 启动命令 (严格对齐原项目参数) -----------------
 
 torchrun \
@@ -117,6 +105,18 @@ torchrun \
     agent.vlm_path=$VLM_PATH \
     agent.cam_type='single' \
     agent.grpo=True \
+    +agent.grpo_cfg.gamma_denoising=${GRPO_GAMMA} \
+    +agent.grpo_cfg.clip_advantage_lower_quantile=${GRPO_CLIP_LOW} \
+    +agent.grpo_cfg.clip_advantage_upper_quantile=${GRPO_CLIP_HIGH} \
+    +agent.grpo_cfg.randn_clip_value=${GRPO_RANDN_CLIP} \
+    +agent.grpo_cfg.denoised_clip_value=${GRPO_DENOISED_CLIP} \
+    +agent.grpo_cfg.min_sampling_denoising_std=${GRPO_MIN_SAMPLING_STD} \
+    +agent.grpo_cfg.min_logprob_denoising_std=${GRPO_MIN_LOGPROB_STD} \
+    \
+    +agent.grpo_cfg.scorer_config.progress_weight=${SCORE_PROGRESS} \
+    +agent.grpo_cfg.scorer_config.ttc_weight=${SCORE_TTC} \
+    +agent.grpo_cfg.scorer_config.comfortable_weight=${SCORE_COMFORT} \
+    \
     agent.cache_hidden_state=True \
     agent.vlm_type="internvl" \
     agent.checkpoint_path="'$CHECKPOINT'" \
@@ -128,7 +128,7 @@ torchrun \
     dataloader.params.batch_size=8 \
     trainer.params.num_nodes=$NNODES \
     trainer.params.devices=$GPUS_PER_NODE \
-    experiment_name=$EXP_NAME \
+    experiment_name=training_internvl_agent_dit_rl \
     train_test_split=$TRAIN_TEST_SPLIT \
     cache_path=$CACHE_PATH \
     output_dir=$OUTPUT_DIR \

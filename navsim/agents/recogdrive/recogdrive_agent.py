@@ -51,6 +51,7 @@ class ReCogDriveAgent(AbstractAgent):
         metric_cache_path: Optional[str] = '',  # GRPO 需要的 PDM 度量缓存路径
         reference_policy_checkpoint: Optional[str] = '',  # GRPO 需要的参考策略（第二阶段训练好的模型）路径
         vlm_size: Optional[str] = 'large',  # VLM 的尺寸标记
+        grpo_cfg: Optional[Any] = None,  # 新增这个参数接收命令行传入的配置
     ):
         super().__init__()
         self._trajectory_sampling = trajectory_sampling
@@ -62,6 +63,7 @@ class ReCogDriveAgent(AbstractAgent):
         self.cache_hidden_state = cache_hidden_state
         self._lr = lr
         self.grpo = grpo
+        self.grpo_cfg_override = grpo_cfg # 保存一下覆盖配置
         self.backbone = None # VLM 骨干网络实例，默认为 None
         self.metric_cache_path = metric_cache_path
         self.reference_policy_checkpoint = reference_policy_checkpoint
@@ -101,6 +103,23 @@ class ReCogDriveAgent(AbstractAgent):
         cfg.vlm_size = self.vlm_size # 将 VLM 尺寸也存入配置
         # 如果启用 GRPO，则将 GRPO 相关的配置传入
         if self.grpo:
+            # 修正后的配置注入逻辑
+            if self.grpo_cfg_override is not None:
+                for key, value in self.grpo_cfg_override.items():
+                    # 1. 获取原始配置中的属性值
+                    original_attr = getattr(cfg.grpo_cfg, key, None)
+                    # 2. 如果原始属性是一个 Dataclass/对象，且传入的值是字典/DictConfig
+                    #    那么我们应该递归更新，而不是直接替换
+                    if hasattr(original_attr, "__dataclass_fields__") and (isinstance(value, dict) or isinstance(value, DictConfig)):
+                        # 遍历传入的字典，逐个更新属性
+                        for sub_key, sub_value in value.items():
+                            if hasattr(original_attr, sub_key):
+                                setattr(original_attr, sub_key, sub_value)
+                            else:
+                                print(f"Warning: {sub_key} not found in {key} config, skipping.")
+                    else:
+                        # 3. 如果是普通类型（float, int），直接替换
+                        setattr(cfg.grpo_cfg, key, value)
             cfg.grpo_cfg.metric_cache_path = self.metric_cache_path
             cfg.grpo_cfg.reference_policy_checkpoint = self.reference_policy_checkpoint
             

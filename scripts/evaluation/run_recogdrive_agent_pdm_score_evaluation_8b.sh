@@ -3,7 +3,7 @@ source /home/luban/miniconda3/etc/profile.d/conda.sh
 # 激活你的虚拟环境
 conda activate navsim
 # 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive
+cd /nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive
 
 set -x
 
@@ -11,7 +11,7 @@ set -x
 TRAIN_TEST_SPLIT=navtest  # 评估集 Split
 
 # 你的项目根目录
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
+PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive"
 
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
 export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
@@ -40,7 +40,7 @@ echo "GPUS: ${GPUS}"
 # [A] 你的训练产物 (Checkpoint)
 # 这是你刚刚训练完的模型。通常在 checkpoints 文件夹里会有 'last.ckpt' 或者 'epoch=xx.ckpt'
 # 如果你找不到这个文件，请去文件夹里确认一下具体名字！
-CHECKPOINT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/exp/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
+CHECKPOINT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive/outputs/recogdrive_stage3_test_shiqi/lightning_logs/version_1/checkpoints/epoch=9-step=6650.ckpt"
 
 # [B] VLM 权重 (第一阶段产物，保持不变)
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
@@ -66,5 +66,5 @@ torchrun \
     use_cache_without_dataset=True \
     agent.sampling_method="ddim" \
     worker=sequential \
-    experiment_name=recogdrive_agent_eval_8b > eval_8b.txt 2>&1
+    experiment_name=recogdrive_agent_eval_shiqi > eval_shiqi.txt 2>&1
 

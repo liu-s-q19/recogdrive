@@ -175,6 +175,9 @@ class GRPOAlgorithm(RLAlgorithm):
                     scorer=self.train_scorer,
                 )
                 rewards.append(asdict(pdm_result)["score"])
-            except:
+            except Exception as e:
+                # ！！！在这里加个 print，看看究竟报了什么错！！！
+                print(f"[ERROR in Reward]: {e}")
+                # print(f"Scorer Config Type: {type(self.train_scorer.config)}") 
                 rewards.append(0.0)
         return torch.tensor(rewards, device=pred_traj.device, dtype=pred_traj.dtype).detach()
