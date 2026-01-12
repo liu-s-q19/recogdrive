@@ -40,7 +40,7 @@ echo "GPUS: ${GPUS}"
 # [A] 你的训练产物 (Checkpoint)
 # 这是你刚刚训练完的模型。通常在 checkpoints 文件夹里会有 'last.ckpt' 或者 'epoch=xx.ckpt'
 # 如果你找不到这个文件，请去文件夹里确认一下具体名字！
-CHECKPOINT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive/outputs/recogdrive_stage3_test_shiqi/lightning_logs/version_1/checkpoints/epoch=9-step=6650.ckpt"
+CHECKPOINT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive/outputs/reinforce_plus_plus/lightning_logs/version_2/checkpoints/epoch=9-step=6650.ckpt"
 
 # [B] VLM 权重 (第一阶段产物，保持不变)
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
@@ -48,6 +48,21 @@ VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
 # [C] 评估集缓存路径 (来自 run_caching_..._eval.sh)
 # 【注意】这个路径必须存在！如果你之前没跑通 eval 缓存脚本，这里会报错。
 CACHE_PATH_EVAL="$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train_test"
+
+# ----------------- 自动提取 EXP_NAME -----------------
+# 1. ${CHECKPOINT#*outputs/} : 从左边开始删除，直到找到 'outputs/' 为止
+#    结果变成: rl_A_clamp5/lightning_logs/...
+temp_str="${CHECKPOINT#*outputs/}"
+
+# 2. ${temp_str%%/*} : 从右边开始删除，保留第一个 '/' 左边的内容
+#    结果变成: rl_A_clamp5
+EXP_NAME="${temp_str%%/*}"
+
+echo "Detected Experiment Name: ${EXP_NAME}"
+# ----------------------------------------------------
+
+# 现在可以使用提取出来的 EXP_NAME 了
+OUTPUT_DIR="$PROJECT_ROOT/outputs/${EXP_NAME}/eval"
 
 # ----------------- 4. 启动评估命令 -----------------
 torchrun \
@@ -66,5 +81,6 @@ torchrun \
     use_cache_without_dataset=True \
     agent.sampling_method="ddim" \
     worker=sequential \
+    output_dir=$OUTPUT_DIR \
     experiment_name=recogdrive_agent_eval_shiqi > eval_shiqi.txt 2>&1
 

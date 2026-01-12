@@ -32,8 +32,8 @@ METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 CHECKPOINT="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
 
 # [输出] Stage 3 RL 结果目录
-RL_ALGO=reinforce_plus_plus
-OUTPUT_DIR="$PROJECT_ROOT/outputs/reinforce_plus_plus"
+EXP_NAME="rl_wo_gamma"
+OUTPUT_DIR="$PROJECT_ROOT/outputs/$EXP_NAME"
 
 # ----------------- 2. 自动化分布式配置 (适配 MLP/Luban) -----------------
 # 你的环境是 2机16卡，所以每节点8卡
@@ -76,9 +76,9 @@ export MASTER_PORT=$MASTER_PORT
 
 # ---------------- 4. GRPO 算法超参数 ----------------
 # 数值裁剪相关
-GRPO_GAMMA=0.6
+GRPO_GAMMA=1.0
 GRPO_CLIP_LOW=0.00   # 裁剪百分比下界
-GRPO_CLIP_HIGH=1.00  # 裁剪百分比上界
+GRPO_CLIP_HIGH=1.0  # 裁剪百分比上界
 GRPO_RANDN_CLIP=5.0
 GRPO_DENOISED_CLIP=1.0
 
@@ -106,7 +106,6 @@ torchrun \
     agent.vlm_path=$VLM_PATH \
     agent.cam_type='single' \
     agent.grpo=True \
-    +agent.rl_algo_type=${RL_ALGO} \
     +agent.grpo_cfg.gamma_denoising=${GRPO_GAMMA} \
     +agent.grpo_cfg.clip_advantage_lower_quantile=${GRPO_CLIP_LOW} \
     +agent.grpo_cfg.clip_advantage_upper_quantile=${GRPO_CLIP_HIGH} \
@@ -130,7 +129,7 @@ torchrun \
     dataloader.params.batch_size=8 \
     trainer.params.num_nodes=$NNODES \
     trainer.params.devices=$GPUS_PER_NODE \
-    experiment_name=training_internvl_agent_dit_rl \
+    experiment_name=$EXP_NAME \
     train_test_split=$TRAIN_TEST_SPLIT \
     cache_path=$CACHE_PATH \
     output_dir=$OUTPUT_DIR \

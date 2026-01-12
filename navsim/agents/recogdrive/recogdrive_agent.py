@@ -25,7 +25,7 @@ from .recogdrive_diffusion_planner import (  # 【核心】第二部分：扩散
     ReCogDriveDiffusionPlanner,
     ReCogDriveDiffusionPlannerConfig,
 )
-from .recogdrive_rl_algo import GRPOAlgorithm
+from .recogdrive_rl_algo import GRPOAlgorithm, ReinforcePlusPlusAlgorithm
 
 class ReCogDriveAgent(AbstractAgent):
     """
@@ -52,6 +52,7 @@ class ReCogDriveAgent(AbstractAgent):
         reference_policy_checkpoint: Optional[str] = '',  # GRPO 需要的参考策略（第二阶段训练好的模型）路径
         vlm_size: Optional[str] = 'large',  # VLM 的尺寸标记
         grpo_cfg: Optional[Any] = None,  # 新增这个参数接收命令行传入的配置
+        rl_algo_type: str = "grpo", # [新增参数] 算法类型，默认为 'grpo'
     ):
         super().__init__()
         self._trajectory_sampling = trajectory_sampling
@@ -63,6 +64,7 @@ class ReCogDriveAgent(AbstractAgent):
         self.cache_hidden_state = cache_hidden_state
         self._lr = lr
         self.grpo = grpo
+        self.rl_algo_type = rl_algo_type
         self.grpo_cfg_override = grpo_cfg # 保存一下覆盖配置
         self.backbone = None # VLM 骨干网络实例，默认为 None
         self.metric_cache_path = metric_cache_path
@@ -131,10 +133,22 @@ class ReCogDriveAgent(AbstractAgent):
         # GRPO 算法初始化逻辑
         self.rl_algo = None
         if self.grpo:
-            # 实例化GRPOAlgorithm
-            # 参数注入和权重加载现在都会在 GRPOAlgorithm.__init__ 内部自动完成
-            # 保证这里的干净，只需要传入配置和模型即可
-            self.rl_algo = GRPOAlgorithm(cfg.grpo_cfg, self.action_head)
+            # 1. 定义算法映射表
+            ALGO_MAP = {
+                "grpo": GRPOAlgorithm,
+                "reinforce_plus_plus": ReinforcePlusPlusAlgorithm,
+            }
+
+            # 2. 获取对应的类
+            algo_class = ALGO_MAP.get(self.rl_algo_type.lower())
+            
+            if algo_class is None:
+                raise ValueError(f"Unknown rl_algo_type: {self.rl_algo_type}. Supported: {list(ALGO_MAP.keys())}")
+
+            print(f"✅ [Agent] Initializing RL Algorithm: {algo_class.__name__}")
+
+            # 3. 实例化 (接口统一，所以参数一样)
+            self.rl_algo = algo_class(cfg.grpo_cfg, self.action_head)
 
     def name(self) -> str:
         return self.__class__.__name__

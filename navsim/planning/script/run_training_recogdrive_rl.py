@@ -7,6 +7,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 import torch.distributed as dist
 from navsim.agents.abstract_agent import AbstractAgent
 from navsim.common.dataclasses import SceneFilter
@@ -172,14 +173,46 @@ def main(cfg: DictConfig) -> None:
     val_dataloader = DataLoader(val_data, collate_fn=custom_collate_fn, **cfg.dataloader.params, shuffle=False)
     logger.info("Num validation samples: %d", len(val_data))
 
+    # --- Resume Training Logic ---
+    ckpt_path = None
+    pl_logger = None
+    exp_dir = Path(cfg.output_dir)
+
+    if exp_dir.exists():
+        checkpoint_files = sorted(exp_dir.rglob("**/checkpoints/*.ckpt"), key=os.path.getmtime)
+        if checkpoint_files:
+            ckpt_path = checkpoint_files[-1]
+            try:
+                # Extract version from path like: .../lightning_logs/version_X/checkpoints/...
+                version_name = ckpt_path.parent.parent.name
+                log_dir = ckpt_path.parent.parent.parent.parent
+                pl_logger = TensorBoardLogger(save_dir=log_dir, name=None, version=version_name)
+                logger.info(f"Found latest checkpoint: {ckpt_path}")
+                logger.info(f"Resuming training in log directory: {pl_logger.log_dir}")
+            except IndexError:
+                logger.warning("Could not determine version from checkpoint path. Starting new version.")
+                pl_logger = TensorBoardLogger(save_dir=exp_dir, name="lightning_logs", version=None)
+                ckpt_path = None # Do not resume if version cannot be parsed
+        else:
+            logger.info("No checkpoint found, starting from scratch.")
+            pl_logger = TensorBoardLogger(save_dir=exp_dir, name="lightning_logs", version=None)
+    else:
+        logger.info("Output directory does not exist, starting from scratch.")
+        pl_logger = TensorBoardLogger(save_dir=exp_dir, name="lightning_logs", version=None)
+    
     logger.info("Building Trainer")
-    trainer = pl.Trainer(**cfg.trainer.params, callbacks=[pl.callbacks.ModelCheckpoint(monitor="val/loss_epoch",mode='min', save_top_k=5,every_n_epochs=1)])
+    trainer = pl.Trainer(
+        **cfg.trainer.params, 
+        callbacks=[pl.callbacks.ModelCheckpoint(monitor="val/loss_epoch", mode='min', save_top_k=5, every_n_epochs=1)],
+        logger=pl_logger
+    )
 
     logger.info("Starting Training")
     trainer.fit(
         model=lightning_module,
         train_dataloaders=train_dataloader,
         val_dataloaders=val_dataloader,
+        ckpt_path=str(ckpt_path) if ckpt_path else None,
     )
 
 
