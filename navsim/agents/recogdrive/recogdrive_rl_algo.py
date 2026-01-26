@@ -21,7 +21,7 @@ class RLAlgorithm:
     def compute_loss(self, actor_model: nn.Module, inputs: BatchFeature, tokens_list: List[str]) -> BatchFeature:
         raise NotImplementedError
 
-class GRPOAlgorithm(RLAlgorithm):
+class ReinforceAlgorithm(RLAlgorithm):
     def __init__(self, config: GRPOConfig, model_template: ReCogDriveDiffusionPlanner):
         super().__init__()
         self.cfg = config

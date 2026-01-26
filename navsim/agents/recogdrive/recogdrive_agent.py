@@ -25,7 +25,7 @@ from .recogdrive_diffusion_planner import (  # 【核心】第二部分：扩散
     ReCogDriveDiffusionPlanner,
     ReCogDriveDiffusionPlannerConfig,
 )
-from .recogdrive_rl_algo import GRPOAlgorithm, ReinforcePlusPlusAlgorithm
+from .recogdrive_rl_algo import ReinforceAlgorithm, ReinforcePlusPlusAlgorithm
 
 class ReCogDriveAgent(AbstractAgent):
     """
@@ -135,7 +135,7 @@ class ReCogDriveAgent(AbstractAgent):
         if self.grpo:
             # 1. 定义算法映射表
             ALGO_MAP = {
-                "grpo": GRPOAlgorithm,
+                "reinforce": ReinforceAlgorithm,
                 "reinforce_plus_plus": ReinforcePlusPlusAlgorithm,
             }
 
@@ -286,32 +286,8 @@ class ReCogDriveAgent(AbstractAgent):
         # 拼接车辆状态和历史轨迹，作为规划器的“低维状态”输入
         input_state = torch.cat([status_feature, history_trajectory_reshaped], dim=1)
         
-        
-        # --- 4. 运行扩散规划器 (Action Head) ---
-        # 根据是训练、GRPO训练还是推理，调用 'action_head' 不同方法
-        # if self.training and not self.grpo:
-        #     # 【阶段二：标准训练模式】
-        #     # 将 'input_state' 和 VLM 特征（作为 condition）
-        #     # 以及目标轨迹 'targets["trajectory"]' 传给规划器
-        #     action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
-        #     # action_head 的 forward 会计算 diffusion loss
-        #     return self.action_head(last_hidden_state, action_inputs)
-        
-        # elif self.training and self.grpo:
-        #     # 【阶段三：GRPO 训练模式】
-        #     action_inputs = BatchFeature(data={"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype), "action": targets["trajectory"].to(model_dtype)})
-        #     # 调用 GRPO 特定的前向传播
-        #     return self.action_head.forward_grpo(last_hidden_state, action_inputs, tokens_list)
-        
-        # else: 
-        #     # 【推理模式】
-        #     # 只提供状态和 VLM 特征，不提供目标 'action'
-        #     action_inputs = BatchFeature({"state": input_state.to(model_dtype), "his_traj": history_trajectory_reshaped.to(model_dtype), "status_feature": status_feature.to(model_dtype)})
-        #     # 调用 'get_action' 来采样生成轨迹
-        #     return self.action_head.get_action(last_hidden_state.to(model_dtype), action_inputs)
-        
         # 构造 input batch
-        # 这里我统一了一下，把 SFT 和 RL 的输入构造稍微整理得整洁一点
+        # 把 SFT 和 RL 的输入构造稍微整理得整洁一点
         if self.training:
             action_inputs = BatchFeature(data={
                 "state": input_state.to(model_dtype), 
