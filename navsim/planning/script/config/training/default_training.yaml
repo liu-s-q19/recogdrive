@@ -26,6 +26,7 @@ dataloader:
     num_workers: 8  # number of workers for data loading
     pin_memory: true  # pin memory for faster GPU transfer
     prefetch_factor: 2  # number of samples loaded in advance by each worker
+    persistent_workers: true  # keep workers alive to reduce epoch-to-epoch overhead
 
 trainer:
   params:

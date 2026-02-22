@@ -1,10 +1,8 @@
 #!/bin/bash
 # 加载 conda 配置
-source /home/luban/miniconda3/etc/profile.d/conda.sh
-# 激活你的虚拟环境
+source /data/miniconda/etc/profile.d/conda.sh
 conda activate navsim
-# 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive
+cd /data/liushiqi/recogdrive || exit
 
 
 # 打印所有环境变量到日志，帮我们找 IP 变量名
@@ -14,26 +12,54 @@ echo "Environment variables saved to env_debug.log"
 
 # ----------------- 1. 路径与基础配置 -----------------
 # 你的 NFS 代码根目录
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 TRAIN_TEST_SPLIT=navtrain
-
-# 导出环境变量
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
-export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
-export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export NUPLAN_MAPS_ROOT="/data/liushiqi/recogdrive/dataset/navsim/maps"
+export NAVSIM_EXP_ROOT="/data/liushiqi/recogdrive/exp"
+export NAVSIM_DEVKIT_ROOT="/data/liushiqi/recogdrive"
+export OPENSCENE_DATA_ROOT="/data/liushiqi/recogdrive/dataset/navsim"
+CACHE_PATH=$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train
+
+# ----------------- DataLoader / SHM 稳定性 -----------------
+# 这个训练会在 DataLoader worker -> 主进程之间通过共享内存传输 batch。
+# 当 /dev/shm 很小（很多集群容器默认 64MB/1GB）且 batch 很大时，容易报：
+#   RuntimeError: unable to write to file </torch_...>: No space left on device
+#   Unexpected bus error encountered in worker (insufficient shared memory)
+#
+# 默认值偏“稳”，你可以在提交作业时用环境变量覆盖。
+export TORCH_SHARING_STRATEGY=${TORCH_SHARING_STRATEGY:-file_system}
+export TMPDIR=${TMPDIR:-$NAVSIM_EXP_ROOT/tmp}
+mkdir -p "$TMPDIR"
+
+# 可覆盖的 DataLoader 参数
+DATALOADER_BATCH_SIZE=${DATALOADER_BATCH_SIZE:-32}
+DATALOADER_NUM_WORKERS=${DATALOADER_NUM_WORKERS:-8}
+DATALOADER_PREFETCH_FACTOR=${DATALOADER_PREFETCH_FACTOR:-2}
+DATALOADER_PIN_MEMORY=${DATALOADER_PIN_MEMORY:-false}
+DATALOADER_PERSISTENT_WORKERS=${DATALOADER_PERSISTENT_WORKERS:-true}
+
+# num_workers=0 时，PyTorch 不允许设置 prefetch_factor / persistent_workers
+if [ "$DATALOADER_NUM_WORKERS" -gt 0 ]; then
+    DATALOADER_WORKER_ARGS=(
+        dataloader.params.prefetch_factor=$DATALOADER_PREFETCH_FACTOR
+        dataloader.params.persistent_workers=$DATALOADER_PERSISTENT_WORKERS
+    )
+else
+    DATALOADER_WORKER_ARGS=()
+fi
+
+export PYTHONPATH="$(pwd):${PYTHONPATH}"
 
 # 模型与缓存路径
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
-CACHE_PATH="$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train"
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus"
+OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_8gpus"
 
 # ----------------- 2. 自动化分布式配置 (深度适配 Luban/PET) -----------------
 
-# [A] 显卡配置：适配你的 8卡 H20
+# [A] 显卡配置：适配你的 8卡 A800
 GPUS_PER_NODE=8
-NNODES=2  # 你申请了 2 台机器
+NNODES=1  # 你申请了 2 台机器
 
 # [B] 自动获取 Master IP 和 Rank
 # 根据你的 debug.log，平台使用的是 PET_ 或 DISTRIBUTED_ 前缀
@@ -88,6 +114,11 @@ export NCCL_SOCKET_FAMILY=AF_INET
 export MASTER_ADDR=$MASTER_ADDR
 export MASTER_PORT=$MASTER_PORT
 
+# 增加文件句柄限制，防止多 worker 导致句柄耗尽
+ulimit -n 65535
+# 取消内存锁定限制，这对解决 Bus error 至关重要
+ulimit -l unlimited
+
 # ... (前面的配置部分保持不变) ...
 
 # ----------------- 4. 启动命令 -----------------
@@ -117,7 +148,10 @@ torchrun \
     use_cache_without_dataset=True \
     force_cache_computation=False \
     worker=sequential \
-    dataloader.params.batch_size=32 \
+    dataloader.params.batch_size=$DATALOADER_BATCH_SIZE \
+    dataloader.params.num_workers=$DATALOADER_NUM_WORKERS \
+    dataloader.params.pin_memory=$DATALOADER_PIN_MEMORY \
+    ${DATALOADER_WORKER_ARGS[@]} \
     trainer.params.num_nodes=$NNODES \
     trainer.params.devices=$GPUS_PER_NODE \
     > train_mlp_rank${NODE_RANK}.log 2>&1

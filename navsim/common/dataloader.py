@@ -187,10 +187,29 @@ class MetricCacheLoader:
         :return: dictionary of token and file path
         """
         metadata_dir = cache_path / "metadata"
-        metadata_file = [file for file in metadata_dir.iterdir() if ".csv" in str(file)][0]
-        with open(str(metadata_file), "r") as f:
-            cache_paths = f.read().splitlines()[1:]
-        metric_cache_dict = {cache_path.split("/")[-2]: cache_path for cache_path in cache_paths}
+
+        # Prefer the legacy/indexed format: metadata/*.csv contains cache file paths.
+        if metadata_dir.exists():
+            csv_files = [file for file in metadata_dir.iterdir() if file.suffix == ".csv"]
+            if csv_files:
+                metadata_file = csv_files[0]
+                with open(str(metadata_file), "r") as f:
+                    cache_paths = f.read().splitlines()[1:]
+                # Each line is a cache file path; token is assumed to be the parent folder name.
+                metric_cache_dict = {Path(p).parts[-2]: Path(p) for p in cache_paths if p}
+                if metric_cache_dict:
+                    return metric_cache_dict
+
+        # Fallback: scan the cache folder recursively for per-token files.
+        # Current workspace layout is like:
+        #   metric_cache_train/<log_segment>/unknown/<token>/metric_cache.pkl
+        # or sometimes compressed variants.
+        metric_cache_dict: Dict[str, Path] = {}
+        patterns = ["metric_cache.pkl", "metric_cache.pkl.xz", "metric_cache.pkl.lzma"]
+        for pat in patterns:
+            for p in cache_path.rglob(pat):
+                token = p.parent.name
+                metric_cache_dict[token] = p
         return metric_cache_dict
 
     @property
@@ -219,9 +238,15 @@ class MetricCacheLoader:
         :param token: unique identifier of scene
         :return: metric cache dataclass
         """
-        with lzma.open(self.metric_cache_paths[token], "rb") as f:
-            metric_cache: MetricCache = pickle.load(f)
-        return metric_cache
+        path = self.metric_cache_paths[token]
+        try:
+            with lzma.open(path, "rb") as f:
+                metric_cache: MetricCache = pickle.load(f)
+            return metric_cache
+        except lzma.LZMAError:
+            with open(path, "rb") as f:
+                metric_cache: MetricCache = pickle.load(f)
+            return metric_cache
 
     def to_pickle(self, path: Path) -> None:
         """

@@ -3,7 +3,7 @@ import torch
 from torch import nn
 from transformers import AutoModel, AutoTokenizer
 from transformers.modeling_outputs import CausalLMOutputWithPast
-
+import os
 from .utils.conversation import get_conv_template
 
 IMG_CONTEXT_TOKEN = '<IMG_CONTEXT>'
@@ -50,13 +50,17 @@ class RecogDriveBackbone(nn.Module):
 
         if self.model_type == 'internvl':
             # --- Load InternVL Model and Tokenizer ---
+            local_rank = int(os.environ.get("LOCAL_RANK", 0))
+            torch.cuda.set_device(local_rank)
             self.model = AutoModel.from_pretrained(
                 checkpoint_path,
                 torch_dtype=torch.bfloat16,
                 low_cpu_mem_usage=True,
                 trust_remote_code=True,
                 use_flash_attn=True,
-                device_map=self.device
+                # device_map=self.device
+                # attn_implementation="sdpa", # 关键：替代 FlashAttention2
+                device_map={"": f"cuda:{local_rank}"}
             ).eval()
             self.tokenizer = AutoTokenizer.from_pretrained(
                 checkpoint_path,

@@ -1,9 +1,9 @@
-# 加载 conda 配置
-source /home/luban/miniconda3/etc/profile.d/conda.sh
-# 激活你的虚拟环境
+#!/bin/bash
+
+# ================= 1. 环境加载 =================
+source /data/miniconda/etc/profile.d/conda.sh
 conda activate navsim
-# 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive
+cd /data/liushiqi/recogdrive || exit
 
 #!/bin/bash
 set -x
@@ -13,20 +13,19 @@ set -x
 TRAIN_TEST_SPLIT=navtrain
 
 # 你的项目根目录 (保持不变)
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
+export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/dataset/navsim/maps"
 export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
 export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/dataset/navsim"
 
 # 【修改点2】输出路径加个后缀 _train，避免覆盖评估集的缓存
 CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 
 # ----------------- 2. 启动命令 (极速版配置) -----------------
-# 继承之前的加速配置：单机多进程 (Process Pool)
-rm -rf /nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive/exp/metric_cache_train
+
 # 【修改点3 & 4】修改实验名和日志文件名
 python $NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_metric_caching.py \
     train_test_split=$TRAIN_TEST_SPLIT \

@@ -3,13 +3,13 @@ set -x
 
 # ----------------- 1. 路径与环境配置 -----------------
 TRAIN_TEST_SPLIT=navtest
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/leidianqiao/code/recogdrive"
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
+export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/dataset/navsim/maps"
 export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
 export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/dataset/navsim"
 
 CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache"
 

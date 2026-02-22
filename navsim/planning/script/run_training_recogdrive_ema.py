@@ -2,6 +2,7 @@ from typing import Tuple
 from pathlib import Path
 import logging
 import os
+import datetime
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -25,33 +26,67 @@ CONFIG_PATH = "config/training"
 CONFIG_NAME = "default_training"
 
 
+def _get_dist_timeout() -> datetime.timedelta:
+    """Return process-group timeout.
+
+    In multi-node runs, some ranks can be much slower (e.g., cache scanning on network FS).
+    A larger timeout avoids spurious monitoredBarrier failures.
+    """
+    minutes_str = os.getenv("DIST_TIMEOUT_MINUTES") or os.getenv("DIST_TIMEOUT_MIN") or "60"
+    try:
+        minutes = int(minutes_str)
+    except ValueError:
+        minutes = 60
+    return datetime.timedelta(minutes=minutes)
+
+
+def _maybe_set_torch_sharing_strategy() -> None:
+    """Optionally switch PyTorch CPU tensor sharing strategy.
+
+    On some clusters/containers, /dev/shm is tiny, causing DataLoader worker IPC to fail with:
+    'unable to write to file </torch_...>: No space left on device' and bus errors.
+
+    Set env var TORCH_SHARING_STRATEGY=file_system to route IPC via temp files (respects TMPDIR).
+    """
+    strategy = os.getenv("TORCH_SHARING_STRATEGY")
+    if not strategy:
+        return
+    try:
+        torch.multiprocessing.set_sharing_strategy(strategy)
+        logger.info("Set torch sharing strategy: %s", strategy)
+    except Exception as e:
+        logger.warning("Failed to set torch sharing strategy '%s': %s", strategy, e)
+
+
 def load_callbacks():
     callbacks = []
-    
+
     use_ema = True
     if use_ema:
-        callbacks.append(EMAModelCheckpoint(
-            monitor='val/loss_epoch',
-            mode='min',
-            save_last=True,
-            save_on_train_epoch_end=True,
-            save_top_k=5,
-            every_n_epochs=1
-        ))
+        callbacks.append(
+            EMAModelCheckpoint(
+                monitor='val/loss_epoch',
+                mode='min',
+                save_last=True,
+                save_on_train_epoch_end=True,
+                save_top_k=5,
+                every_n_epochs=1,
+            )
+        )
         callbacks.append(EMA(decay=0.999))
     else:
-        callbacks.append(plc.ModelCheckpoint(
-            monitor='val/loss_epoch',
-            mode='min',
-            save_last=True,
-            save_on_train_epoch_end=True,
-            save_top_k=5,
-            every_n_epochs=1
-        ))
+        callbacks.append(
+            plc.ModelCheckpoint(
+                monitor='val/loss_epoch',
+                mode='min',
+                save_last=True,
+                save_on_train_epoch_end=True,
+                save_top_k=5,
+                every_n_epochs=1,
+            )
+        )
 
     callbacks.append(plc.LearningRateMonitor(logging_interval='epoch'))
-
-
     return callbacks
 
 
@@ -60,17 +95,17 @@ def custom_collate_fn(
 ) -> Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
     features_list, targets_list, tokens_list = zip(*batch)
 
-    history_trajectory = torch.stack([features['history_trajectory'] for features in features_list], dim=0).cpu()
-    high_command_one_hot = torch.stack([features['high_command_one_hot'] for features in features_list], dim=0).cpu()
-    status_feature = torch.stack([features['status_feature'] for features in features_list], dim=0).cpu()
+    history_trajectory = torch.stack([features['history_trajectory'] for features in features_list], dim=0).detach().cpu()
+    high_command_one_hot = torch.stack([features['high_command_one_hot'] for features in features_list], dim=0).detach().cpu()
+    status_feature = torch.stack([features['status_feature'] for features in features_list], dim=0).detach().cpu()
 
     last_hidden_state = rnn_utils.pad_sequence(
         [features['last_hidden_state'] for features in features_list],
         batch_first=True,
         padding_value=0.0
-    ).clone().detach()
+    ).detach().cpu()
 
-    trajectory = torch.stack([targets['trajectory'] for targets in targets_list], dim=0).cpu()
+    trajectory = torch.stack([targets['trajectory'] for targets in targets_list], dim=0).detach().cpu()
 
     features = {
         'history_trajectory': history_trajectory,
@@ -152,12 +187,17 @@ def main(cfg: DictConfig) -> None:
     world_size = int(os.getenv('WORLD_SIZE', 1))
     rank = int(os.getenv('RANK', 0))
 
+    if torch.cuda.is_available():
+        torch.cuda.set_device(local_rank)
+
+    timeout = _get_dist_timeout()
+
     dist.init_process_group(
         backend='nccl',
         world_size=world_size,
         rank=rank,
+        timeout=timeout,
     )
-    torch.cuda.set_device(local_rank)
     pl.seed_everything(cfg.seed, workers=True)
     logger.info(f"Global Seed set to {cfg.seed}")
 
@@ -165,6 +205,7 @@ def main(cfg: DictConfig) -> None:
 
     logger.info("Building Agent")
     agent: AbstractAgent = instantiate(cfg.agent)
+    _maybe_set_torch_sharing_strategy()
 
     logger.info("Building Lightning Module")
     lightning_module = AgentLightningModule(
@@ -205,11 +246,15 @@ def main(cfg: DictConfig) -> None:
     trainer = pl.Trainer(**cfg.trainer.params, callbacks=load_callbacks())
 
     logger.info("Starting Training")
-    trainer.fit(
-        model=lightning_module,
-        train_dataloaders=train_dataloader,
-        val_dataloaders=val_dataloader,
-    )
+    try:
+        trainer.fit(
+            model=lightning_module,
+            train_dataloaders=train_dataloader,
+            val_dataloaders=val_dataloader,
+        )
+    finally:
+        if dist.is_available() and dist.is_initialized():
+            dist.destroy_process_group()
 
 
 if __name__ == "__main__":

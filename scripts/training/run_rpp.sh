@@ -1,24 +1,21 @@
 #!/bin/bash
-# set -xeuo pipefail
-# export ADDR2LINE="/home/luban/miniconda3/envs/navsim/bin/x86_64-conda-linux-gnu-addr2line"
-# 加载 conda 配置
-source /home/luban/miniconda3/etc/profile.d/conda.sh
-# 激活你的虚拟环境
+
+# ================= 1. 环境加载 =================
+source /data/miniconda/etc/profile.d/conda.sh
 conda activate navsim
-# 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive
+cd /data/liushiqi/recogdrive || exit
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 
-# ----------------- 1. 核心路径配置 (映射你的真实NFS路径) -----------------
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive"
+# ================= 2. 路径配置 (NFS) =================
 TRAIN_TEST_SPLIT=navtrain
-
-# 环境变量
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
-export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
-export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export NUPLAN_MAPS_ROOT="/data/liushiqi/recogdrive/dataset/navsim/maps"
+export NAVSIM_EXP_ROOT="/data/liushiqi/recogdrive/exp"
+export NAVSIM_DEVKIT_ROOT="/data/liushiqi/recogdrive"
+export OPENSCENE_DATA_ROOT="/data/liushiqi/recogdrive/dataset/navsim"
+CACHE_PATH=$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train
 
+export PYTHONPATH="$(pwd):${PYTHONPATH}"
 # [输入] Stage 1 VLM 权重
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
 
@@ -121,7 +118,7 @@ torchrun \
     \
     agent.cache_hidden_state=True \
     agent.vlm_type="internvl" \
-    agent.checkpoint_path="'$CHECKPOINT'" \
+    agent.checkpoint_path=$CHECKPOINT \
     agent.dit_type="small" \
     agent.sampling_method="ddim" \
     agent.metric_cache_path=$METRIC_CACHE_PATH \

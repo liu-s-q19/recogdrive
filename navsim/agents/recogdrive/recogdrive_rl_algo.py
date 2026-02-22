@@ -152,11 +152,9 @@ class ReinforceAlgorithm(RLAlgorithm):
         cache_dict = {}
         for token in unique_tokens:
             if token in self.metric_cache_loader.metric_cache_paths:
-                path = self.metric_cache_loader.metric_cache_paths[token]
-                with lzma.open(path, 'rb') as f:
-                    cache_dict[token] = pickle.load(f)
+                cache_dict[token] = self.metric_cache_loader.get_from_token(token)
             else:
-                 return torch.zeros(len(tokens_list), device=pred_traj.device) # Fallback
+                return torch.zeros(len(tokens_list), device=pred_traj.device)  # Fallback
 
         pred_np = pred_traj.detach().cpu().numpy()
         rewards = []
@@ -185,7 +183,7 @@ class ReinforceAlgorithm(RLAlgorithm):
 
 
 
-class ReinforcePlusPlusAlgorithm(GRPOAlgorithm):
+class ReinforcePlusPlusAlgorithm(ReinforceAlgorithm):
     """
     Reinforce++ 算法实现 (https://arxiv.org/abs/2501.03262)。
     

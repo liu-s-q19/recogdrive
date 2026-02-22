@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e  # 遇到错误立即停止
+set -euo pipefail  # 遇到错误立即停止
 
 # ==============================================================================
 # Hugging Face 模型下载脚本 (国内优化版)
@@ -17,9 +17,18 @@ set -e  # 遇到错误立即停止
 # 模型 ID (Hugging Face 上的名字)
 MODEL_ID="owl10/ReCogDrive-VLM-8B"
 
-# 存放路径 (建议使用绝对路径，这里默认放在当前目录下的 ReCogDrive-VLM-8B 文件夹)
-BASE_PATH="${BASE_PATH:-$(pwd)}"
+# 存放路径：默认保存到 /data/models（可用 BASE_PATH 覆盖）
+BASE_PATH="${BASE_PATH:-/data/models}"
 OUTPUT_DIR="${BASE_PATH}/ReCogDrive-VLM-8B"
+
+# 避免 huggingface/transformers 等把缓存写到系统 home（例如 /root/.cache）
+CACHE_HOME="${CACHE_HOME:-$BASE_PATH/.cache_home}"
+mkdir -p "$BASE_PATH" "$CACHE_HOME"
+export HOME="$CACHE_HOME"
+export XDG_CACHE_HOME="$CACHE_HOME/.cache"
+export XDG_CONFIG_HOME="$CACHE_HOME/.config"
+export XDG_DATA_HOME="$CACHE_HOME/.local/share"
+export HF_HOME="${HF_HOME:-$CACHE_HOME/huggingface}"
 
 # --- 关键：国内镜像配置 ---
 # 只有设置了这个，huggingface-cli 才会走国内镜像
@@ -63,6 +72,8 @@ echo "开始下载模型: $MODEL_ID"
 echo "镜像地址: $HF_ENDPOINT"
 echo "保存位置: $OUTPUT_DIR"
 echo "=================================================="
+
+mkdir -p "$OUTPUT_DIR"
 
 # 解释参数：
 # download: 下载命令

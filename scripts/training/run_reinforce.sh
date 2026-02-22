@@ -1,23 +1,33 @@
 #!/bin/bash
 # set -xeuo pipefail
-# export ADDR2LINE="/home/luban/miniconda3/envs/navsim/bin/x86_64-conda-linux-gnu-addr2line"
-# 加载 conda 配置
-source /home/luban/miniconda3/etc/profile.d/conda.sh
-# 激活你的虚拟环境
-conda activate navsim
-# 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive
+# export ADDR2LINE="/data/miniconda/envs/navsim/bin/x86_64-conda-linux-gnu-addr2line"
 
-# ----------------- 1. 核心路径配置 (映射你的真实NFS路径) -----------------
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive"
+# 加载 conda 配置
+source /data/miniconda/etc/profile.d/conda.sh
+
+# 激活虚拟环境
+conda activate navsim
+
+# 切换到代码根目录 (非常重要，否则 python 找不到模块)
+cd /data/liushiqi/recogdrive || exit
+
+# ----------------- 1. 核心路径配置 -----------------
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 TRAIN_TEST_SPLIT=navtrain
 
 # 环境变量
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
+export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/dataset/navsim/maps"
 export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
 export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/dataset/navsim"
+
+export PYTHONPATH="$(pwd):${PYTHONPATH}"
+
+# ----------------- DataLoader / SHM 稳定性 -----------------
+export TORCH_SHARING_STRATEGY=${TORCH_SHARING_STRATEGY:-file_system}
+export TMPDIR=${TMPDIR:-$NAVSIM_EXP_ROOT/tmp}
+mkdir -p "$TMPDIR"
 
 # [输入] Stage 1 VLM 权重
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
@@ -29,39 +39,54 @@ CACHE_PATH="$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train"
 METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 
 # [输入] Stage 2 最佳模型 (Teacher/Reference)
-CHECKPOINT="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
+# 约定：优先使用 EMA 权重作为 teacher/reference（通常更稳、更强），
+# 若 EMA 不存在则回退到普通 last.ckpt。
+DEFAULT_CKPT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints"
+DEFAULT_CKPT_EMA="$DEFAULT_CKPT_DIR/last-EMA.ckpt"
+DEFAULT_CKPT_RAW="$DEFAULT_CKPT_DIR/last.ckpt"
+
+if [ -n "${CHECKPOINT:-}" ]; then
+    :
+elif [ -f "$DEFAULT_CKPT_EMA" ]; then
+    CHECKPOINT="$DEFAULT_CKPT_EMA"
+elif [ -f "$DEFAULT_CKPT_RAW" ]; then
+    CHECKPOINT="$DEFAULT_CKPT_RAW"
+else
+    echo "[ERROR] No checkpoint found. Please export CHECKPOINT=/path/to/model.ckpt"
+    echo "        Tried: $DEFAULT_CKPT_EMA"
+    echo "        Tried: $DEFAULT_CKPT_RAW"
+    exit 1
+fi
 
 # [输出] Stage 3 RL 结果目录
 RL_ALGO=reinforce
-OUTPUT_DIR="$PROJECT_ROOT/outputs/reinforce"
+OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage3_rl_reinforce"
 
-# ----------------- 2. 自动化分布式配置 (适配 MLP/Luban) -----------------
-# 你的环境是 2机16卡，所以每节点8卡
+# ----------------- 2. 分布式配置：单机 8 卡 -----------------
 GPUS_PER_NODE=8
-NNODES=2
+NNODES=1
 
 # 自动探测 Master IP
 if [ -n "$PET_MASTER_ADDR" ]; then
     MASTER_ADDR=$PET_MASTER_ADDR
     MASTER_PORT=${PET_MASTER_PORT:-29500}
-    NODE_RANK=${DISTRIBUTED_NODE_RANK:-0}
+    NODE_RANK=0
 elif [ -n "$MLP_WORKER_0_HOST" ]; then
     MASTER_ADDR=$MLP_WORKER_0_HOST
     MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
-    NODE_RANK=$MLP_ROLE_INDEX
+    NODE_RANK=0
 else
     # 单机回退
     MASTER_ADDR="127.0.0.1"
     MASTER_PORT=29500
     NODE_RANK=0
-    NNODES=1
 fi
 
 echo "=================================================="
 echo "   🚀 Stage 3 RL Training (Config Aligned)"
 echo "=================================================="
 echo "Master: $MASTER_ADDR | Rank: $NODE_RANK | GPUs: $GPUS_PER_NODE"
-echo "Batch Size: 8 (Total: $((8 * 16)) = 128)"
+echo "Batch Size: 8 (Single-node total: $((8 * GPUS_PER_NODE)))"
 echo "Checkpoint: $CHECKPOINT"
 echo "=================================================="
 
@@ -121,11 +146,11 @@ torchrun \
     \
     agent.cache_hidden_state=True \
     agent.vlm_type="internvl" \
-    agent.checkpoint_path="'$CHECKPOINT'" \
+    agent.checkpoint_path=$CHECKPOINT \
     agent.dit_type="small" \
     agent.sampling_method="ddim" \
     agent.metric_cache_path=$METRIC_CACHE_PATH \
-    agent.reference_policy_checkpoint="'$CHECKPOINT'" \
+    agent.reference_policy_checkpoint=$CHECKPOINT \
     trainer.params.max_epochs=10 \
     dataloader.params.batch_size=8 \
     trainer.params.num_nodes=$NNODES \
