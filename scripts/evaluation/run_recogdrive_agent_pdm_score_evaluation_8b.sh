@@ -1,9 +1,9 @@
 # 加载 conda 配置
-source /home/luban/miniconda3/etc/profile.d/conda.sh
+source /data/miniconda/etc/profile.d/conda.sh
 # 激活你的虚拟环境
 conda activate navsim
 # 切换到代码根目录 (非常重要，否则 python 找不到模块)
-cd /nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive
+cd /data/liushiqi/recogdrive
 
 set -x
 
@@ -11,16 +11,16 @@ set -x
 TRAIN_TEST_SPLIT=navtest  # 评估集 Split
 
 # 你的项目根目录
-PROJECT_ROOT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive"
+PROJECT_ROOT="/data/liushiqi/recogdrive"
 
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/data/navsim/maps"
+export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/dataset/navsim/maps"
 export NAVSIM_EXP_ROOT="$PROJECT_ROOT/exp"
 export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
-export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/data/navsim"
+export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/dataset/navsim"
 
 # ----------------- 2. 显卡配置 (单机8卡) -----------------
-# 评估通常不需要多机，单机 8 张 H20 足够快了
+# 评估通常不需要多机，单机 8 张 足够
 export NCCL_IB_DISABLE=0
 export NCCL_P2P_DISABLE=0
 export NCCL_SHM_DISABLE=0
@@ -40,7 +40,7 @@ echo "GPUS: ${GPUS}"
 # [A] 你的训练产物 (Checkpoint)
 # 这是你刚刚训练完的模型。通常在 checkpoints 文件夹里会有 'last.ckpt' 或者 'epoch=xx.ckpt'
 # 如果你找不到这个文件，请去文件夹里确认一下具体名字！
-CHECKPOINT="/nfs/dataset-ofs-prediction/rl_lab/liushiqi/vla/recogdrive/outputs/reinforce_plus_plus/lightning_logs/version_2/checkpoints/epoch=9-step=6650.ckpt"
+CHECKPOINT="/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_4nodes_8gpus/lightning_logs/version_1/checkpoints/epoch=99-step=8400-EMA.ckpt"
 
 # [B] VLM 权重 (第一阶段产物，保持不变)
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
@@ -82,5 +82,5 @@ torchrun \
     agent.sampling_method="ddim" \
     worker=sequential \
     output_dir=$OUTPUT_DIR \
-    experiment_name=recogdrive_agent_eval_shiqi > eval_shiqi.txt 2>&1
+    experiment_name=recogdrive_agent_eval_shiqi > eval_shiqi.log 2>&1
 

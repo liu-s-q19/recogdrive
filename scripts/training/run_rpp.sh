@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # ================= 1. 环境加载 =================
 source /data/miniconda/etc/profile.d/conda.sh
@@ -15,7 +16,7 @@ export NAVSIM_DEVKIT_ROOT="/data/liushiqi/recogdrive"
 export OPENSCENE_DATA_ROOT="/data/liushiqi/recogdrive/dataset/navsim"
 CACHE_PATH=$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train
 
-export PYTHONPATH="$(pwd):${PYTHONPATH}"
+export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
 # [输入] Stage 1 VLM 权重
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
 
@@ -26,11 +27,37 @@ CACHE_PATH="$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train"
 METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 
 # [输入] Stage 2 最佳模型 (Teacher/Reference)
-CHECKPOINT="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_16gpus/lightning_logs/version_0/checkpoints/epoch=95-step=16032-EMA.ckpt"
+# 可通过环境变量覆盖：export CHECKPOINT=/path/to/ckpt
+CHECKPOINT="${CHECKPOINT:-/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}"
+
+if [ -d "$CHECKPOINT" ]; then
+    DEFAULT_CKPT_DIR="$CHECKPOINT"
+else
+    DEFAULT_CKPT_DIR="$(dirname "$CHECKPOINT")"
+fi
+
+DEFAULT_CKPT_EMA="$DEFAULT_CKPT_DIR/last-EMA.ckpt"
+DEFAULT_CKPT_RAW="$DEFAULT_CKPT_DIR/last.ckpt"
+
+if [ -f "$CHECKPOINT" ]; then
+    :
+elif [ -f "$DEFAULT_CKPT_EMA" ]; then
+    CHECKPOINT="$DEFAULT_CKPT_EMA"
+elif [ -f "$DEFAULT_CKPT_RAW" ]; then
+    CHECKPOINT="$DEFAULT_CKPT_RAW"
+else
+    echo "[ERROR] No checkpoint file found. Please export CHECKPOINT=/path/to/model.ckpt"
+    echo "        Input CHECKPOINT: $CHECKPOINT"
+    echo "        Tried: $DEFAULT_CKPT_EMA"
+    echo "        Tried: $DEFAULT_CKPT_RAW"
+    exit 1
+fi
 
 # [输出] Stage 3 RL 结果目录
 RL_ALGO=reinforce_plus_plus
-OUTPUT_DIR="$PROJECT_ROOT/outputs/reinforce_plus_plus"
+OUTPUT_DIR="${OUTPUT_DIR:-/data/liushiqi/recogdrive/outputs/recogdrive_rpp}"
+mkdir -p "$OUTPUT_DIR"
+LOG_FILE="$OUTPUT_DIR/train_rpp_rank\${NODE_RANK}.log"
 
 # ----------------- 2. 自动化分布式配置 (适配 MLP/Luban) -----------------
 # 你的环境是 2机16卡，所以每节点8卡
@@ -38,14 +65,14 @@ GPUS_PER_NODE=8
 NNODES=2
 
 # 自动探测 Master IP
-if [ -n "$PET_MASTER_ADDR" ]; then
-    MASTER_ADDR=$PET_MASTER_ADDR
+if [ -n "${PET_MASTER_ADDR:-}" ]; then
+    MASTER_ADDR=${PET_MASTER_ADDR}
     MASTER_PORT=${PET_MASTER_PORT:-29500}
     NODE_RANK=${DISTRIBUTED_NODE_RANK:-0}
-elif [ -n "$MLP_WORKER_0_HOST" ]; then
-    MASTER_ADDR=$MLP_WORKER_0_HOST
+elif [ -n "${MLP_WORKER_0_HOST:-}" ]; then
+    MASTER_ADDR=${MLP_WORKER_0_HOST}
     MASTER_PORT=${MLP_WORKER_0_PORT:-29500}
-    NODE_RANK=$MLP_ROLE_INDEX
+    NODE_RANK=${MLP_ROLE_INDEX:-0}
 else
     # 单机回退
     MASTER_ADDR="127.0.0.1"
@@ -58,8 +85,9 @@ echo "=================================================="
 echo "   🚀 Stage 3 RL Training (Config Aligned)"
 echo "=================================================="
 echo "Master: $MASTER_ADDR | Rank: $NODE_RANK | GPUs: $GPUS_PER_NODE"
-echo "Batch Size: 8 (Total: $((8 * 16)) = 128)"
+echo "Batch Size: 8"
 echo "Checkpoint: $CHECKPOINT"
+echo "Output: $OUTPUT_DIR"
 echo "=================================================="
 
 # ----------------- 3. 环境优化 -----------------
@@ -122,7 +150,7 @@ torchrun \
     agent.dit_type="small" \
     agent.sampling_method="ddim" \
     agent.metric_cache_path=$METRIC_CACHE_PATH \
-    agent.reference_policy_checkpoint="'$CHECKPOINT'" \
+    agent.reference_policy_checkpoint=$CHECKPOINT \
     trainer.params.max_epochs=10 \
     dataloader.params.batch_size=8 \
     trainer.params.num_nodes=$NNODES \
@@ -133,4 +161,4 @@ torchrun \
     output_dir=$OUTPUT_DIR \
     use_cache_without_dataset=True \
     force_cache_computation=False \
-    worker=sequential > train_rl_rank${NODE_RANK}.log 2>&1
+    worker=sequential > "$OUTPUT_DIR/train_rpp_rank${NODE_RANK}.log" 2>&1

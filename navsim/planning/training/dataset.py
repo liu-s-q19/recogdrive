@@ -4,6 +4,7 @@ import logging
 import pickle
 import gzip
 import os
+import uuid
 
 import torch
 from tqdm import tqdm
@@ -29,8 +30,15 @@ def load_feature_target_from_pickle(path: Path) -> Dict[str, torch.Tensor]:
 def dump_feature_target_to_pickle(path: Path, data_dict: Dict[str, torch.Tensor]) -> None:
     """Helper function to save feature/target to pickle."""
     # Use compresslevel = 1 to compress the size but also has fast write and read.
-    with gzip.open(path, "wb", compresslevel=1) as f:
-        pickle.dump(data_dict, f)
+    # Write to temp file first, then atomically replace destination.
+    tmp_path = path.parent / f".{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}"
+    try:
+        with gzip.open(tmp_path, "wb", compresslevel=1) as f:
+            pickle.dump(data_dict, f)
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
 
 
 class CacheOnlyDataset(torch.utils.data.Dataset):
@@ -219,6 +227,8 @@ class Dataset(torch.utils.data.Dataset):
 
         for builder in self._target_builders:
             data_dict_path = token_path / (builder.get_unique_name() + ".gz")
+            if data_dict_path.exists():
+                continue
             data_dict = builder.compute_targets(scene)
             dump_feature_target_to_pickle(data_dict_path, data_dict)
 

@@ -98,6 +98,7 @@ def main(cfg: DictConfig) -> None:
     # 基础分布式参数获取
     local_rank = int(os.getenv('LOCAL_RANK', 0))
     rank = int(os.getenv('RANK', 0))
+    world_size = int(os.getenv('WORLD_SIZE', 1))
     
     # 初始化当前进程的设备
     torch.cuda.set_device(local_rank)
@@ -132,8 +133,15 @@ def main(cfg: DictConfig) -> None:
         for log_file, tokens_list in scene_loader.get_tokens_list_per_log().items()
     ]
 
+    # 每个 rank 仅处理自己分片，避免多进程重复写同一缓存文件
+    sharded_data_points = [dp for idx, dp in enumerate(data_points) if idx % world_size == rank]
+    logger.info(
+        f"Rank {rank}/{world_size} assigned {len(sharded_data_points)} logs "
+        f"(total logs: {len(data_points)})."
+    )
+
     # 执行并行映射
-    _ = worker_map(worker, cache_features, data_points)
+    _ = worker_map(worker, cache_features, sharded_data_points)
     logger.info(f"Rank {rank} finished caching task.")
 
 if __name__ == "__main__":

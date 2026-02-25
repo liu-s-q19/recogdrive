@@ -25,7 +25,7 @@ export OPENSCENE_DATA_ROOT="$PROJECT_ROOT/dataset/navsim"
 export PYTHONPATH="$(pwd):${PYTHONPATH}"
 
 # ----------------- DataLoader / SHM 稳定性 -----------------
-export TORCH_SHARING_STRATEGY=${TORCH_SHARING_STRATEGY:-file_system}
+export TORCH_SHARING_STRATEGY=${TORCH_SHARING_STRATEGY:-file_descriptor}
 export TMPDIR=${TMPDIR:-$NAVSIM_EXP_ROOT/tmp}
 mkdir -p "$TMPDIR"
 
@@ -41,18 +41,26 @@ METRIC_CACHE_PATH="$NAVSIM_EXP_ROOT/metric_cache_train"
 # [输入] Stage 2 最佳模型 (Teacher/Reference)
 # 约定：优先使用 EMA 权重作为 teacher/reference（通常更稳、更强），
 # 若 EMA 不存在则回退到普通 last.ckpt。
-DEFAULT_CKPT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints"
+CHECKPOINT="${CHECKPOINT:-/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}"
+
+if [ -d "$CHECKPOINT" ]; then
+    DEFAULT_CKPT_DIR="$CHECKPOINT"
+else
+    DEFAULT_CKPT_DIR="$(dirname "$CHECKPOINT")"
+fi
+
 DEFAULT_CKPT_EMA="$DEFAULT_CKPT_DIR/last-EMA.ckpt"
 DEFAULT_CKPT_RAW="$DEFAULT_CKPT_DIR/last.ckpt"
 
-if [ -n "${CHECKPOINT:-}" ]; then
+if [ -f "$CHECKPOINT" ]; then
     :
 elif [ -f "$DEFAULT_CKPT_EMA" ]; then
     CHECKPOINT="$DEFAULT_CKPT_EMA"
 elif [ -f "$DEFAULT_CKPT_RAW" ]; then
     CHECKPOINT="$DEFAULT_CKPT_RAW"
 else
-    echo "[ERROR] No checkpoint found. Please export CHECKPOINT=/path/to/model.ckpt"
+    echo "[ERROR] No checkpoint file found. Please export CHECKPOINT=/path/to/model.ckpt"
+    echo "        Input CHECKPOINT: $CHECKPOINT"
     echo "        Tried: $DEFAULT_CKPT_EMA"
     echo "        Tried: $DEFAULT_CKPT_RAW"
     exit 1
@@ -60,7 +68,7 @@ fi
 
 # [输出] Stage 3 RL 结果目录
 RL_ALGO=reinforce
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage3_rl_reinforce"
+OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_reinforce_epochlast"
 
 # ----------------- 2. 分布式配置：单机 8 卡 -----------------
 GPUS_PER_NODE=8

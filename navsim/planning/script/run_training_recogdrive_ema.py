@@ -26,6 +26,46 @@ CONFIG_PATH = "config/training"
 CONFIG_NAME = "default_training"
 
 
+def _configure_rank_local_tmpdirs(rank: int, local_rank: int) -> None:
+    """Isolate tmp/compiler caches per process to avoid multi-process races.
+
+    Each torchrun local worker previously inherited the same TMPDIR from launcher,
+    which could cause races in multiprocessing finalizers and inductor/triton caches.
+    """
+    base_tmp = os.getenv("RUNTIME_TMP_BASE") or "/dev/shm/rdtmp"
+    node_rank = os.getenv("NODE_RANK", "0")
+
+    process_tmp = os.path.join(base_tmp, f"n{node_rank}", f"r{rank}l{local_rank}")
+    os.makedirs(process_tmp, exist_ok=True)
+
+    os.environ["TMPDIR"] = process_tmp
+    os.environ["TMP"] = process_tmp
+    os.environ["TEMP"] = process_tmp
+
+    inductor_cache = os.path.join(process_tmp, "torchinductor_cache")
+    triton_cache = os.path.join(process_tmp, "triton_cache")
+    os.makedirs(inductor_cache, exist_ok=True)
+    os.makedirs(triton_cache, exist_ok=True)
+
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = inductor_cache
+    os.environ["TRITON_CACHE_DIR"] = triton_cache
+
+    logger.info(
+        "Per-rank tmp configured: TMPDIR=%s, TORCHINDUCTOR_CACHE_DIR=%s, TRITON_CACHE_DIR=%s",
+        process_tmp,
+        inductor_cache,
+        triton_cache,
+    )
+
+
+def _maybe_disable_torch_compile() -> None:
+    """Optionally disable torch.compile/dynamo for stability on large distributed runs."""
+    if os.getenv("DISABLE_TORCH_COMPILE", "0") != "1":
+        return
+    os.environ["TORCHDYNAMO_DISABLE"] = "1"
+    logger.warning("DISABLE_TORCH_COMPILE=1 -> TORCHDYNAMO_DISABLE=1 (torch.compile disabled)")
+
+
 def _get_dist_timeout() -> datetime.timedelta:
     """Return process-group timeout.
 
@@ -186,6 +226,9 @@ def main(cfg: DictConfig) -> None:
     local_rank = int(os.getenv('LOCAL_RANK', 0))
     world_size = int(os.getenv('WORLD_SIZE', 1))
     rank = int(os.getenv('RANK', 0))
+
+    _configure_rank_local_tmpdirs(rank=rank, local_rank=local_rank)
+    _maybe_disable_torch_compile()
 
     if torch.cuda.is_available():
         torch.cuda.set_device(local_rank)
