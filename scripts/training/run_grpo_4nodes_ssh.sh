@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 4-node SSH launcher for ReCogDrive Stage3 RL (reinforce)
+# 4-node SSH launcher for ReCogDrive Stage3 RL (GRPO)
 # - Verifies /dev/shm=128G on every node
 # - Launches worker nodes (rank 1..3) via SSH + nohup
 # - Launches master rank0 locally (foreground or background)
@@ -20,7 +20,7 @@ NODES=(
 NNODES="${NNODES:-4}"
 GPUS_PER_NODE="${GPUS_PER_NODE:-8}"
 MASTER_ADDR="${MASTER_ADDR:-10.199.7.32}"
-MASTER_PORT="${MASTER_PORT:-29528}"
+MASTER_PORT="${MASTER_PORT:-29520}"
 
 # Modes
 # - QUICK_VALIDATE=1 : run a light smoke config
@@ -83,8 +83,8 @@ else
   exit 1
 fi
 
-RL_ALGO="${RL_ALGO:-reinforce}"
-OUTPUT_DIR="${OUTPUT_DIR:-/data/liushiqi/recogdrive/outputs/recogdrive_stage3_rl_reinforce_4nodes_v2}"
+RL_ALGO="${RL_ALGO:-grpo_clip}"
+OUTPUT_DIR="${OUTPUT_DIR:-/data/liushiqi/recogdrive/outputs/recogdrive_stage3_rl_grpov2_4nodes}"
 
 # /dev/shm stability for dataloader
 export TORCH_SHARING_STRATEGY="${TORCH_SHARING_STRATEGY:-file_descriptor}"
@@ -100,7 +100,7 @@ DATALOADER_PERSISTENT_WORKERS="${DATALOADER_PERSISTENT_WORKERS:-false}"
 MAX_EPOCHS="${MAX_EPOCHS:-10}"
 DISABLE_TORCH_COMPILE="${DISABLE_TORCH_COMPILE:-1}"
 
-# GRPO / reinforce hyperparameters
+# GRPO hyperparameters
 GRPO_GAMMA="${GRPO_GAMMA:-0.6}"
 GRPO_CLIP_LOW="${GRPO_CLIP_LOW:-0.00}"
 GRPO_CLIP_HIGH="${GRPO_CLIP_HIGH:-1.00}"
@@ -108,6 +108,15 @@ GRPO_RANDN_CLIP="${GRPO_RANDN_CLIP:-5.0}"
 GRPO_DENOISED_CLIP="${GRPO_DENOISED_CLIP:-1.0}"
 GRPO_MIN_SAMPLING_STD="${GRPO_MIN_SAMPLING_STD:-0.04}"
 GRPO_MIN_LOGPROB_STD="${GRPO_MIN_LOGPROB_STD:-0.1}"
+GRPO_CLIP_EPS="${GRPO_CLIP_EPS:-0.2}"
+GRPO_PPO_EPOCHS="${GRPO_PPO_EPOCHS:-2}"
+GRPO_MINI_BATCH_SIZE="${GRPO_MINI_BATCH_SIZE:-16}"
+GRPO_MAX_GRAD_NORM="${GRPO_MAX_GRAD_NORM:-1.0}"
+GRPO_TARGET_KL="${GRPO_TARGET_KL:-0.03}"
+GRPO_SAMPLE_TIME="${GRPO_SAMPLE_TIME:-8}"
+GRPO_BC_COEFF="${GRPO_BC_COEFF:-0.1}"
+GRPO_USE_BC_LOSS="${GRPO_USE_BC_LOSS:-true}"
+
 SCORE_PROGRESS="${SCORE_PROGRESS:-10.0}"
 SCORE_TTC="${SCORE_TTC:-5.0}"
 SCORE_COMFORT="${SCORE_COMFORT:-2.0}"
@@ -159,11 +168,11 @@ if [[ "${QUICK_VALIDATE}" == "1" ]]; then
   DATALOADER_PIN_MEMORY="false"
   DATALOADER_PERSISTENT_WORKERS="false"
   MAX_EPOCHS="1"
-  OUTPUT_DIR="/data/liushiqi/recogdrive/outputs/recogdrive_reinforce_quick_validate_4nodes_${TS}"
+  OUTPUT_DIR="/data/liushiqi/recogdrive/outputs/recogdrive_grpo_quick_validate_4nodes_${TS}"
 fi
 
 echo "=================================================="
-echo "🚀 ReCogDrive Stage3 RL (reinforce) 4-node SSH"
+echo "🚀 ReCogDrive Stage3 RL (GRPO) 4-node SSH"
 echo "=================================================="
 echo "Nodes:       ${NODES[*]}"
 echo "Master:      ${MASTER_ADDR}:${MASTER_PORT}"
@@ -179,6 +188,7 @@ echo "Max epochs:  ${MAX_EPOCHS}"
 echo "Quick mode:  ${QUICK_VALIDATE}"
 echo "Master BG:   ${RUN_MASTER_BG}"
 echo "Auto check:  ${AUTO_CHECK}"
+echo "RL algo:     ${RL_ALGO}"
 echo "Clean logs:  ${CLEAN_OLD_LOGS} (keep=${LOG_KEEP_RUNS})"
 echo "=================================================="
 
@@ -210,6 +220,9 @@ for node_rank in 1 2 3; do
      GRPO_GAMMA='${GRPO_GAMMA}' GRPO_CLIP_LOW='${GRPO_CLIP_LOW}' GRPO_CLIP_HIGH='${GRPO_CLIP_HIGH}' \
      GRPO_RANDN_CLIP='${GRPO_RANDN_CLIP}' GRPO_DENOISED_CLIP='${GRPO_DENOISED_CLIP}' \
      GRPO_MIN_SAMPLING_STD='${GRPO_MIN_SAMPLING_STD}' GRPO_MIN_LOGPROB_STD='${GRPO_MIN_LOGPROB_STD}' \
+     GRPO_CLIP_EPS='${GRPO_CLIP_EPS}' GRPO_PPO_EPOCHS='${GRPO_PPO_EPOCHS}' GRPO_MINI_BATCH_SIZE='${GRPO_MINI_BATCH_SIZE}' \
+     GRPO_MAX_GRAD_NORM='${GRPO_MAX_GRAD_NORM}' GRPO_TARGET_KL='${GRPO_TARGET_KL}' GRPO_SAMPLE_TIME='${GRPO_SAMPLE_TIME}' \
+     GRPO_BC_COEFF='${GRPO_BC_COEFF}' GRPO_USE_BC_LOSS='${GRPO_USE_BC_LOSS}' \
      SCORE_PROGRESS='${SCORE_PROGRESS}' SCORE_TTC='${SCORE_TTC}' SCORE_COMFORT='${SCORE_COMFORT}' \
      DATALOADER_BATCH_SIZE='${DATALOADER_BATCH_SIZE}' DATALOADER_NUM_WORKERS='${DATALOADER_NUM_WORKERS}' \
      DATALOADER_PREFETCH_FACTOR='${DATALOADER_PREFETCH_FACTOR}' DATALOADER_PIN_MEMORY='${DATALOADER_PIN_MEMORY}' \
@@ -278,6 +291,14 @@ nohup torchrun \
   +agent.grpo_cfg.denoised_clip_value="${GRPO_DENOISED_CLIP}" \
   +agent.grpo_cfg.min_sampling_denoising_std="${GRPO_MIN_SAMPLING_STD}" \
   +agent.grpo_cfg.min_logprob_denoising_std="${GRPO_MIN_LOGPROB_STD}" \
+  +agent.grpo_cfg.clip_epsilon="${GRPO_CLIP_EPS}" \
+  +agent.grpo_cfg.ppo_epochs="${GRPO_PPO_EPOCHS}" \
+  +agent.grpo_cfg.mini_batch_size="${GRPO_MINI_BATCH_SIZE}" \
+  +agent.grpo_cfg.max_grad_norm="${GRPO_MAX_GRAD_NORM}" \
+  +agent.grpo_cfg.target_kl="${GRPO_TARGET_KL}" \
+  +agent.grpo_cfg.sample_time="${GRPO_SAMPLE_TIME}" \
+  +agent.grpo_cfg.bc_coeff="${GRPO_BC_COEFF}" \
+  +agent.grpo_cfg.use_bc_loss="${GRPO_USE_BC_LOSS}" \
   +agent.grpo_cfg.scorer_config.progress_weight="${SCORE_PROGRESS}" \
   +agent.grpo_cfg.scorer_config.ttc_weight="${SCORE_TTC}" \
   +agent.grpo_cfg.scorer_config.comfortable_weight="${SCORE_COMFORT}" \
@@ -366,6 +387,14 @@ MASTER_CMD=(torchrun
   +agent.grpo_cfg.denoised_clip_value="${GRPO_DENOISED_CLIP}"
   +agent.grpo_cfg.min_sampling_denoising_std="${GRPO_MIN_SAMPLING_STD}"
   +agent.grpo_cfg.min_logprob_denoising_std="${GRPO_MIN_LOGPROB_STD}"
+  +agent.grpo_cfg.clip_epsilon="${GRPO_CLIP_EPS}"
+  +agent.grpo_cfg.ppo_epochs="${GRPO_PPO_EPOCHS}"
+  +agent.grpo_cfg.mini_batch_size="${GRPO_MINI_BATCH_SIZE}"
+  +agent.grpo_cfg.max_grad_norm="${GRPO_MAX_GRAD_NORM}"
+  +agent.grpo_cfg.target_kl="${GRPO_TARGET_KL}"
+  +agent.grpo_cfg.sample_time="${GRPO_SAMPLE_TIME}"
+  +agent.grpo_cfg.bc_coeff="${GRPO_BC_COEFF}"
+  +agent.grpo_cfg.use_bc_loss="${GRPO_USE_BC_LOSS}"
   +agent.grpo_cfg.scorer_config.progress_weight="${SCORE_PROGRESS}"
   +agent.grpo_cfg.scorer_config.ttc_weight="${SCORE_TTC}"
   +agent.grpo_cfg.scorer_config.comfortable_weight="${SCORE_COMFORT}"

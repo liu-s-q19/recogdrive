@@ -201,8 +201,18 @@ def main(cfg: DictConfig) -> None:
         pl_logger = TensorBoardLogger(save_dir=exp_dir, name="lightning_logs", version=None)
     
     logger.info("Building Trainer")
+    trainer_params = dict(cfg.trainer.params)
+    if getattr(lightning_module, "use_manual_rl_optimization", False):
+        if "gradient_clip_val" in trainer_params:
+            logger.info("Manual RL optimization enabled: disabling Trainer automatic gradient clipping.")
+            trainer_params.pop("gradient_clip_val")
+        strategy = trainer_params.get("strategy", None)
+        if strategy in ("ddp", "ddp_spawn", None):
+            logger.info("Manual RL optimization enabled: switching strategy to ddp_find_unused_parameters_true.")
+            trainer_params["strategy"] = "ddp_find_unused_parameters_true"
+
     trainer = pl.Trainer(
-        **cfg.trainer.params, 
+        **trainer_params,
         callbacks=[pl.callbacks.ModelCheckpoint(monitor="val/loss_epoch", mode='min', save_top_k=5, every_n_epochs=1)],
         logger=pl_logger
     )

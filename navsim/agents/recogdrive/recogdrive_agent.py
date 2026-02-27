@@ -25,7 +25,7 @@ from .recogdrive_diffusion_planner import (  # 【核心】第二部分：扩散
     ReCogDriveDiffusionPlanner,
     ReCogDriveDiffusionPlannerConfig,
 )
-from .recogdrive_rl_algo import ReinforceAlgorithm, ReinforcePlusPlusAlgorithm
+from .recogdrive_rl_algo import ReinforceAlgorithm, ReinforcePlusPlusAlgorithm, GRPOClipAlgorithm
 
 class ReCogDriveAgent(AbstractAgent):
     """
@@ -135,8 +135,10 @@ class ReCogDriveAgent(AbstractAgent):
         if self.grpo:
             # 1. 定义算法映射表
             ALGO_MAP = {
+                "grpo": ReinforceAlgorithm,
                 "reinforce": ReinforceAlgorithm,
                 "reinforce_plus_plus": ReinforcePlusPlusAlgorithm,
+                "grpo_clip": GRPOClipAlgorithm,
             }
 
             # 2. 获取对应的类
@@ -149,6 +151,44 @@ class ReCogDriveAgent(AbstractAgent):
 
             # 3. 实例化 (接口统一，所以参数一样)
             self.rl_algo = algo_class(cfg.grpo_cfg, self.action_head)
+
+    @property
+    def requires_manual_optimization(self) -> bool:
+        return bool(self.grpo and self.rl_algo is not None and getattr(self.rl_algo, "manual_optimization", False))
+
+    def build_rl_training_inputs(self, features: Dict[str, torch.Tensor], targets: Dict[str, torch.Tensor]):
+        for key, tensor in features.items():
+            if isinstance(tensor, torch.Tensor):
+                features[key] = tensor.cuda()
+
+        model_dtype = next(self.action_head.parameters()).dtype
+
+        history_trajectory = features["history_trajectory"].cuda()
+        if history_trajectory.ndim == 2:
+            history_trajectory = history_trajectory.unsqueeze(0)
+
+        status_feature = features["status_feature"].cuda()
+        if status_feature.ndim == 1:
+            status_feature = status_feature.unsqueeze(0)
+
+        if self.cache_hidden_state:
+            last_hidden_state = features["last_hidden_state"].cuda()
+            if last_hidden_state.ndim == 2:
+                last_hidden_state = last_hidden_state.unsqueeze(0)
+        else:
+            raise RuntimeError("Manual optimization path currently supports cache_hidden_state=True only.")
+
+        history_trajectory_reshaped = history_trajectory.view(history_trajectory.size(0), -1)
+        input_state = torch.cat([status_feature, history_trajectory_reshaped], dim=1)
+
+        action_inputs = BatchFeature(data={
+            "state": input_state.to(model_dtype),
+            "his_traj": history_trajectory_reshaped.to(model_dtype),
+            "status_feature": status_feature.to(model_dtype),
+            "action": targets["trajectory"].to(model_dtype),
+        })
+
+        return last_hidden_state.to(model_dtype), action_inputs
 
     def name(self) -> str:
         return self.__class__.__name__
@@ -172,6 +212,15 @@ class ReCogDriveAgent(AbstractAgent):
                     filtered_ckpt[k2] = v
             # 'strict=False' ----允许只加载部分权重
             self.load_state_dict(filtered_ckpt, strict=False)
+
+        if self.grpo and self.rl_algo is not None and hasattr(self.rl_algo, "ref_model"):
+            ref_ckpt = getattr(getattr(self.rl_algo, "cfg", None), "reference_policy_checkpoint", "")
+            ref_loaded = bool(getattr(self.rl_algo, "reference_policy_loaded", False))
+            if (not ref_ckpt) or (not ref_loaded):
+                self.rl_algo.ref_model.load_state_dict(self.action_head.state_dict(), strict=True)
+                self.rl_algo.ref_model.eval()
+                for param in self.rl_algo.ref_model.parameters():
+                    param.requires_grad = False
 
     def get_sensor_config(self) -> SensorConfig:
         return SensorConfig.build_all_sensors(include=[0, 1, 2, 3])

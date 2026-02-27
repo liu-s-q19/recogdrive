@@ -71,6 +71,14 @@ class GRPOConfig:
     clip_advantage_lower_quantile: float = 0.0 # 优势裁剪，防止奖励信号波动太大
     clip_advantage_upper_quantile: float = 1.0
     gamma_denoising: float = 0.6        
+    clip_epsilon: float = 0.2
+    ppo_epochs: int = 2
+    mini_batch_size: int = 16
+    max_grad_norm: float = 1.0
+    target_kl: Optional[float] = None
+    sample_time: int = 8
+    bc_coeff: float = 0.1
+    use_bc_loss: bool = True
     
     metric_cache_path: str = "/path/to/metric_cache_train"
     reference_policy_checkpoint: str = "/path/to/IL_Model.ckpt"

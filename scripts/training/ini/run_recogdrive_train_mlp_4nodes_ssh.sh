@@ -85,7 +85,7 @@ DISABLE_TORCH_COMPILE="${DISABLE_TORCH_COMPILE:-1}"
 EXTRA_OVERRIDES="${EXTRA_OVERRIDES:-}"
 
 VLM_PATH="${VLM_PATH:-$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B}"
-OUTPUT_DIR="${OUTPUT_DIR:-$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_4nodes_8gpus}"
+OUTPUT_DIR="${OUTPUT_DIR:-$PROJECT_ROOT/outputs/recogdrive_stage2_training_ema_multinode_4nodes_8gpus}"
 
 CONDA_SH="${CONDA_SH:-/data/miniconda/etc/profile.d/conda.sh}"
 CONDA_ENV="${CONDA_ENV:-navsim}"
@@ -135,7 +135,7 @@ if [[ "${QUICK_VALIDATE}" == "1" ]]; then
   DATALOADER_NUM_WORKERS="1"
   DATALOADER_PIN_MEMORY="false"
   MAX_EPOCHS="1"
-  OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_quick_validate_4nodes_${TS}"
+  OUTPUT_DIR="$PROJECT_ROOT/outputs/recogdrive_quick_validate_4nodes_${TS}"
 fi
 
 echo "=================================================="

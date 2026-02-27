@@ -53,7 +53,7 @@ export PYTHONPATH="$(pwd):${PYTHONPATH}"
 
 # 模型与缓存路径
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_stage2_training_ema_multinode_8gpus"
+OUTPUT_DIR="$PROJECT_ROOT/outputs/recogdrive_stage2_training_ema_multinode_8gpus"
 
 # ----------------- 2. 自动化分布式配置 (深度适配 Luban/PET) -----------------
 

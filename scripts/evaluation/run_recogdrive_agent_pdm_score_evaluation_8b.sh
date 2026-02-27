@@ -40,7 +40,8 @@ echo "GPUS: ${GPUS}"
 # [A] 你的训练产物 (Checkpoint)
 # 这是你刚刚训练完的模型。通常在 checkpoints 文件夹里会有 'last.ckpt' 或者 'epoch=xx.ckpt'
 # 如果你找不到这个文件，请去文件夹里确认一下具体名字！
-CHECKPOINT="/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_4nodes_8gpus/lightning_logs/version_1/checkpoints/epoch=99-step=8400-EMA.ckpt"
+CHECKPOINT="/data/liushiqi/recogdrive/outputs/recogdrive_stage3_rl_grpo_4nodes_32gpus/lightning_logs/version_0/checkpoints/epoch=9-step=26600.ckpt"
+CHECKPOINT_HYDRA="${CHECKPOINT//=/\\=}"
 
 # [B] VLM 权重 (第一阶段产物，保持不变)
 VLM_PATH="$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B"
@@ -67,10 +68,12 @@ OUTPUT_DIR="$PROJECT_ROOT/outputs/${EXP_NAME}/eval"
 # ----------------- 4. 启动评估命令 -----------------
 torchrun \
     --nproc_per_node=${GPUS} \
+    --master_addr=127.0.0.1 \
+    --master_port=${MASTER_PORT} \
     $NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_pdm_score_recogdrive.py \
     train_test_split=$TRAIN_TEST_SPLIT \
     agent=recogdrive_agent \
-    agent.checkpoint_path="'$CHECKPOINT'" \
+    agent.checkpoint_path="$CHECKPOINT_HYDRA" \
     agent.vlm_path=$VLM_PATH \
     agent.cam_type='single' \
     agent.grpo=False \

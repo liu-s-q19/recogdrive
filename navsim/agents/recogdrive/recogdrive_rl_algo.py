@@ -2,6 +2,7 @@ import copy
 import lzma
 import pickle
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 from dataclasses import asdict
 from pathlib import Path
@@ -18,6 +19,8 @@ from transformers.feature_extraction_utils import BatchFeature
 from .recogdrive_diffusion_planner import GRPOConfig, ReCogDriveDiffusionPlanner
 
 class RLAlgorithm:
+    manual_optimization: bool = False
+
     def compute_loss(self, actor_model: nn.Module, inputs: BatchFeature, tokens_list: List[str]) -> BatchFeature:
         raise NotImplementedError
 
@@ -25,6 +28,7 @@ class ReinforceAlgorithm(RLAlgorithm):
     def __init__(self, config: GRPOConfig, model_template: ReCogDriveDiffusionPlanner):
         super().__init__()
         self.cfg = config
+        self.reference_policy_loaded = False
         
         # 注入采样参数
         sampling_params = [
@@ -43,7 +47,20 @@ class ReinforceAlgorithm(RLAlgorithm):
         self.gamma_denoising = config.gamma_denoising
 
         print(f"Loading Metric Cache from {config.metric_cache_path}")
-        self.metric_cache_loader = MetricCacheLoader(Path(config.metric_cache_path))
+        cache_root = Path(config.metric_cache_path)
+        if dist.is_available() and dist.is_initialized():
+            rank = dist.get_rank()
+            cache_paths_obj = None
+            if rank == 0:
+                cache_paths_obj = MetricCacheLoader(cache_root).metric_cache_paths
+            obj_list = [cache_paths_obj]
+            dist.broadcast_object_list(obj_list, src=0)
+
+            self.metric_cache_loader = MetricCacheLoader.__new__(MetricCacheLoader)
+            self.metric_cache_loader._file_name = "metric_cache.pkl"
+            self.metric_cache_loader.metric_cache_paths = obj_list[0]
+        else:
+            self.metric_cache_loader = MetricCacheLoader(cache_root)
         
         proposal_sampling = TrajectorySampling(time_horizon=4, interval_length=0.1)
         self.simulator = PDMSimulator(proposal_sampling)
@@ -65,10 +82,13 @@ class ReinforceAlgorithm(RLAlgorithm):
                 # 加载到当前的主模型
                 model_template.load_state_dict(filtered_ckpt, strict=True)
                 print("Successfully loaded weights into Actor Model.")
+                self.reference_policy_loaded = True
             except FileNotFoundError:
                 print(f"Warning: Checkpoint not found at {config.reference_policy_checkpoint}")
+                self.reference_policy_loaded = False
             except Exception as e:
                 print(f"Error loading checkpoint: {e}")
+                self.reference_policy_loaded = False
 
         # 4. 创建 Reference Model
         print("Initializing Reference Model (Old Policy)...")
@@ -150,14 +170,23 @@ class ReinforceAlgorithm(RLAlgorithm):
     def _reward_fn(self, pred_traj: torch.Tensor, tokens_list: List[str]) -> torch.Tensor:
         unique_tokens = set(tokens_list)
         cache_dict = {}
+        missing_tokens = []
         for token in unique_tokens:
             if token in self.metric_cache_loader.metric_cache_paths:
                 cache_dict[token] = self.metric_cache_loader.get_from_token(token)
             else:
-                return torch.zeros(len(tokens_list), device=pred_traj.device)  # Fallback
+                missing_tokens.append(token)
+
+        if missing_tokens:
+            missing_preview = missing_tokens[:5]
+            print(
+                f"[WARN][Reward] Missing metric cache for {len(missing_tokens)} tokens. "
+                f"Examples: {missing_preview}"
+            )
 
         pred_np = pred_traj.detach().cpu().numpy()
         rewards = []
+        error_count = 0
         for i, token in enumerate(tokens_list):
             if token not in cache_dict:
                 rewards.append(0.0)
@@ -178,7 +207,200 @@ class ReinforceAlgorithm(RLAlgorithm):
                 print(f"[ERROR in Reward]: {e}")
                 # print(f"Scorer Config Type: {type(self.train_scorer.config)}") 
                 rewards.append(0.0)
+                error_count += 1
+
+        self._last_reward_debug = {
+            "num_samples": len(tokens_list),
+            "num_unique_tokens": len(unique_tokens),
+            "num_missing_unique_tokens": len(missing_tokens),
+            "missing_unique_token_frac": (len(missing_tokens) / max(1, len(unique_tokens))),
+            "reward_error_count": error_count,
+        }
         return torch.tensor(rewards, device=pred_traj.device, dtype=pred_traj.dtype).detach()
+
+
+class GRPOClipAlgorithm(ReinforceAlgorithm):
+    """
+    GRPO/PPO-clip style algorithm with:
+    - single rollout collection per training step
+    - multi-epoch minibatch optimization on fixed rollout
+    """
+
+    manual_optimization: bool = True
+
+    def __init__(self, config: GRPOConfig, model_template: ReCogDriveDiffusionPlanner):
+        super().__init__(config, model_template)
+        self.clip_epsilon = config.clip_epsilon
+        self.ppo_epochs = config.ppo_epochs
+        self.mini_batch_size = config.mini_batch_size
+        self.max_grad_norm = config.max_grad_norm
+        self.target_kl = config.target_kl
+        self.sample_time = config.sample_time
+        self.bc_coeff = config.bc_coeff
+        self.use_bc_loss = config.use_bc_loss
+
+    def collect_rollout(
+        self,
+        actor_model: ReCogDriveDiffusionPlanner,
+        vl_features: torch.Tensor,
+        action_input: BatchFeature,
+        tokens_list: List[str],
+    ) -> Dict[str, Any]:
+        if self.ref_model.device != actor_model.device:
+            self.ref_model.to(actor_model.device)
+
+        B = vl_features.shape[0]
+        G = self.sample_time
+
+        vl_features_rep = vl_features.repeat_interleave(G, 0)
+        his_traj_rep = action_input.his_traj.repeat_interleave(G, 0)
+        status_feature_rep = action_input.status_feature.repeat_interleave(G, 0)
+
+        with torch.no_grad():
+            chains, trajs = actor_model.sample_chain(
+                vl_features_rep, his_traj_rep, status_feature_rep, deterministic=False
+            )
+
+            tokens_rep = [tok for tok in tokens_list for _ in range(G)]
+            rewards = self._reward_fn(trajs, tokens_rep)
+
+            reward_mean = rewards.mean()
+            reward_std = rewards.std(unbiased=False)
+            reward_nonzero_frac = (rewards != 0).float().mean()
+            reward_p10 = torch.quantile(rewards, 0.10)
+            reward_p50 = torch.quantile(rewards, 0.50)
+            reward_p90 = torch.quantile(rewards, 0.90)
+
+            rewards_matrix = rewards.view(B, G)
+            mean_r = rewards_matrix.mean(dim=1, keepdim=True)
+            std_r = rewards_matrix.std(dim=1, keepdim=True) + 1e-8
+            advantages = ((rewards_matrix - mean_r) / std_r).view(-1)
+
+            adv_min = torch.quantile(advantages, self.clip_advantage_lower_quantile)
+            adv_max = torch.quantile(advantages, self.clip_advantage_upper_quantile)
+            advantages = advantages.clamp(min=adv_min, max=adv_max)
+
+            num_denoising_steps = chains.shape[1] - 1
+            denoising_indices = torch.arange(num_denoising_steps, device=advantages.device)
+            discount = (self.gamma_denoising ** (num_denoising_steps - denoising_indices - 1))
+
+            adv_steps = advantages.view(B, G, 1).expand(-1, -1, num_denoising_steps)
+            discount = discount.view(1, 1, num_denoising_steps).expand(B, G, num_denoising_steps)
+            adv_weighted_flat = (adv_steps * discount).reshape(-1).detach()
+
+            old_log_probs = actor_model.get_logprobs(
+                vl_features_rep, his_traj_rep, status_feature_rep, chains, deterministic=False
+            )
+            old_log_probs = old_log_probs.clamp(min=-5, max=2).mean(dim=[1, 2])
+
+            denoising_steps = chains.shape[1] - 1
+            old_log_probs = old_log_probs.view(B * G, denoising_steps).mean(dim=1).detach()
+            adv_weighted_flat = adv_weighted_flat.view(B * G, denoising_steps).mean(dim=1).detach()
+
+            teacher_chains = None
+            if self.use_bc_loss and self.bc_coeff > 0:
+                teacher_chains, _ = self.ref_model.sample_chain(
+                    vl_features,
+                    action_input.his_traj,
+                    action_input.status_feature,
+                    deterministic=False,
+                )
+                teacher_chains = teacher_chains.detach()
+
+        sample_to_base = torch.arange(B, device=vl_features.device).repeat_interleave(G)
+
+        return {
+            "B": B,
+            "G": G,
+            "num_samples": B * G,
+            "vl_rep": vl_features_rep.detach(),
+            "his_rep": his_traj_rep.detach(),
+            "status_rep": status_feature_rep.detach(),
+            "chains": chains.detach(),
+            "old_log_probs": old_log_probs,
+            "advantages": adv_weighted_flat,
+            "rewards": rewards.detach(),
+            "sample_to_base": sample_to_base,
+            "vl_base": vl_features.detach(),
+            "his_base": action_input.his_traj.detach(),
+            "status_base": action_input.status_feature.detach(),
+            "teacher_chains": teacher_chains,
+            "reward_mean": reward_mean.detach(),
+            "reward_std": reward_std.detach(),
+            "reward_nonzero_frac": reward_nonzero_frac.detach(),
+            "reward_p10": reward_p10.detach(),
+            "reward_p50": reward_p50.detach(),
+            "reward_p90": reward_p90.detach(),
+            "missing_unique_token_frac": torch.tensor(
+                float(getattr(self, "_last_reward_debug", {}).get("missing_unique_token_frac", 0.0)),
+                device=vl_features.device,
+            ),
+            "reward_error_count": torch.tensor(
+                float(getattr(self, "_last_reward_debug", {}).get("reward_error_count", 0)),
+                device=vl_features.device,
+            ),
+        }
+
+    def compute_minibatch_loss(
+        self,
+        actor_model: ReCogDriveDiffusionPlanner,
+        rollout: Dict[str, Any],
+        mb_idx: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        vl_mb = rollout["vl_rep"][mb_idx]
+        his_mb = rollout["his_rep"][mb_idx]
+        status_mb = rollout["status_rep"][mb_idx]
+        chains_mb = rollout["chains"][mb_idx]
+        old_logp_mb = rollout["old_log_probs"][mb_idx]
+        adv_mb = rollout["advantages"][mb_idx]
+
+        new_log_probs = actor_model.get_logprobs(
+            vl_mb,
+            his_mb,
+            status_mb,
+            chains_mb,
+            deterministic=False,
+        )
+        new_log_probs = new_log_probs.clamp(min=-5, max=2).mean(dim=[1, 2])
+        denoising_steps = chains_mb.shape[1] - 1
+        new_log_probs = new_log_probs.view(-1, denoising_steps).mean(dim=1)
+
+        ratio = torch.exp(new_log_probs - old_logp_mb)
+        ratio_clipped = torch.clamp(ratio, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon)
+
+        surr1 = ratio * adv_mb
+        surr2 = ratio_clipped * adv_mb
+        policy_loss = -torch.min(surr1, surr2).mean()
+
+        bc_loss = torch.tensor(0.0, device=policy_loss.device)
+        teacher_chains = rollout["teacher_chains"]
+        if teacher_chains is not None and self.use_bc_loss and self.bc_coeff > 0:
+            base_ids = torch.unique(rollout["sample_to_base"][mb_idx])
+            teacher_mb = teacher_chains[base_ids]
+            bc_logp = actor_model.get_logprobs(
+                rollout["vl_base"][base_ids],
+                rollout["his_base"][base_ids],
+                rollout["status_base"][base_ids],
+                teacher_mb,
+                deterministic=False,
+            )
+            bc_logp = bc_logp.clamp(min=-5, max=2)
+            K_steps = teacher_mb.shape[1] - 1
+            bc_logp = bc_logp.view(-1, K_steps, teacher_mb.shape[2], teacher_mb.shape[3]).mean(dim=[1, 2, 3])
+            bc_loss = -bc_logp.mean()
+
+        total_loss = policy_loss + self.bc_coeff * bc_loss
+
+        approx_kl = (old_logp_mb - new_log_probs).mean().detach()
+        clip_frac = ((ratio - 1.0).abs() > self.clip_epsilon).float().mean().detach()
+
+        return {
+            "loss": total_loss,
+            "policy_loss": policy_loss.detach(),
+            "bc_loss": bc_loss.detach(),
+            "approx_kl": approx_kl,
+            "clip_frac": clip_frac,
+        }
     
 
 

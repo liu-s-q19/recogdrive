@@ -67,8 +67,9 @@ else
 fi
 
 # [输出] Stage 3 RL 结果目录
-RL_ALGO=reinforce
-OUTPUT_DIR="$NAVSIM_EXP_ROOT/recogdrive_reinforce_epochlast"
+RL_ALGO=${RL_ALGO:-reinforce}
+OUTPUT_DIR="$PROJECT_ROOT/outputs/recogdrive_reinforce"
+EXTRA_ARGS=${EXTRA_ARGS:-}
 
 # ----------------- 2. 分布式配置：单机 8 卡 -----------------
 GPUS_PER_NODE=8
@@ -169,4 +170,5 @@ torchrun \
     output_dir=$OUTPUT_DIR \
     use_cache_without_dataset=True \
     force_cache_computation=False \
-    worker=sequential > train_rl_rank${NODE_RANK}.log 2>&1
+    worker=sequential \
+    ${EXTRA_ARGS} > train_rl_rank${NODE_RANK}.log 2>&1
