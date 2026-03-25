@@ -80,7 +80,7 @@ class AbstractAgent(torch.nn.Module, ABC):
             poses = predictions["trajectory"].squeeze(0).numpy()
 
         # extract trajectory
-        return Trajectory(poses)
+        return Trajectory(poses, self._trajectory_sampling)
 
     def compute_loss(
         self,

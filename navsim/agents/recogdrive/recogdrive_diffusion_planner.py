@@ -74,6 +74,7 @@ class GRPOConfig:
     
     metric_cache_path: str = "/path/to/metric_cache_train"
     reference_policy_checkpoint: str = "/path/to/IL_Model.ckpt"
+    scene_loader_mode: str = "legacy_cached_features"
     # 奖励函数 定义
     scorer_config: PDMScorerConfig = field(default_factory=lambda: PDMScorerConfig(
         progress_weight=10.0,    # 往前开得快，奖励多

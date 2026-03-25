@@ -16,6 +16,11 @@ from nuplan.planning.training.experiments.cache_metadata_entry import (
     save_cache_metadata,
 )
 
+from navsim.common.cache_metadata import (
+    V2_CACHE_SCHEMA_VERSION,
+    resolve_train_test_split_name,
+    write_cache_metadata,
+)
 from navsim.planning.metric_caching.metric_cache_processor import MetricCacheProcessor
 from navsim.planning.scenario_builder.navsim_scenario import NavSimScenario
 from navsim.common.dataloader import SceneLoader, SceneFilter
@@ -66,9 +71,11 @@ def cache_scenarios(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List
         scene_filter.log_names = log_names
         scene_filter.tokens = tokens
         scene_loader = SceneLoader(
-            sensor_blobs_path=None,
             data_path=Path(cfg.navsim_log_path),
             scene_filter=scene_filter,
+            original_sensor_path=None,
+            synthetic_sensor_path=Path(cfg.synthetic_sensor_path) if cfg.get("synthetic_sensor_path") else None,
+            synthetic_scenes_path=Path(cfg.synthetic_scenes_path) if cfg.get("synthetic_scenes_path") else None,
             sensor_config=SensorConfig.build_no_sensors(),
         )
 
@@ -123,9 +130,11 @@ def cache_data(cfg: DictConfig, worker: WorkerPool) -> None:
     # Extract scenes based on scene-loader to know which tokens to distribute across workers
     # TODO: infer the tokens per log from metadata, to not have to load metric cache and scenes here
     scene_loader = SceneLoader(
-        sensor_blobs_path=None,
         data_path=Path(cfg.navsim_log_path),
         scene_filter=instantiate(cfg.train_test_split.scene_filter),
+        original_sensor_path=None,
+        synthetic_sensor_path=Path(cfg.synthetic_sensor_path) if cfg.get("synthetic_sensor_path") else None,
+        synthetic_scenes_path=Path(cfg.synthetic_scenes_path) if cfg.get("synthetic_scenes_path") else None,
         sensor_config=SensorConfig.build_no_sensors(),
     )
 
@@ -166,4 +175,10 @@ def cache_data(cfg: DictConfig, worker: WorkerPool) -> None:
     node_id = int(os.environ.get("NODE_RANK", 0))
     logger.info(f"Node {node_id}: Storing metadata csv file containing cache paths for valid features and targets...")
     save_cache_metadata(cached_metadata, Path(cfg.cache.cache_path), node_id)
+    write_cache_metadata(
+        cache_root=Path(cfg.cache.cache_path),
+        train_test_split=resolve_train_test_split_name(cfg),
+        scene_loader_mode="navsim_v2_scene_loader",
+        schema_version=cfg.get("runtime_cache_version", V2_CACHE_SCHEMA_VERSION),
+    )
     logger.info("Done storing metadata csv file.")

@@ -16,11 +16,14 @@ from nuplan.planning.simulation.planner.abstract_planner import PlannerInitializ
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
 from nuplan.planning.simulation.simulation_time_controller.simulation_iteration import SimulationIteration
 from nuplan.planning.simulation.history.simulation_history_buffer import SimulationHistoryBuffer
+from nuplan.common.geometry.convert import absolute_to_relative_poses
 
+from navsim.common.dataclasses import Trajectory
+from navsim.common.enums import SceneFrameType
 from navsim.planning.simulation.planner.pdm_planner.pdm_closed_planner import PDMClosedPlanner
 from navsim.planning.simulation.planner.pdm_planner.proposal.batch_idm_policy import BatchIDMPolicy
 from navsim.planning.simulation.planner.pdm_planner.observation.pdm_observation import PDMObservation
-from navsim.planning.metric_caching.metric_cache import MetricCache
+from navsim.planning.metric_caching.metric_cache import MapParameters, MetricCache
 from navsim.planning.metric_caching.metric_caching_utils import StateInterpolator
 
 
@@ -58,6 +61,29 @@ class MetricCacheProcessor:
             ),
             lateral_offsets=[-1.0, 1.0],
             map_radius=self._map_radius,
+        )
+
+    def _extract_ego_future_trajectory(self, scenario: AbstractScenario) -> Trajectory:
+        ego_trajectory_sampling = TrajectorySampling(
+            time_horizon=self._proposal_sampling.time_horizon,
+            interval_length=scenario.database_interval,
+        )
+        future_ego_states = list(
+            scenario.get_ego_future_trajectory(
+                iteration=0,
+                time_horizon=ego_trajectory_sampling.time_horizon,
+                num_samples=ego_trajectory_sampling.num_poses,
+            )
+        )
+        initial_ego_state = scenario.get_ego_state_at_iteration(0)
+        if future_ego_states and future_ego_states[0].time_point != initial_ego_state.time_point:
+            future_ego_states = [initial_ego_state] + future_ego_states
+
+        future_ego_poses = [state.rear_axle for state in future_ego_states]
+        relative_future_states = absolute_to_relative_poses(future_ego_poses)[1:]
+        return Trajectory(
+            poses=np.array([[pose.x, pose.y, pose.heading] for pose in relative_future_states]),
+            trajectory_sampling=ego_trajectory_sampling,
         )
 
     def _get_planner_inputs(self, scenario: AbstractScenario) -> Tuple[PlannerInput, PlannerInitialization]:
@@ -219,6 +245,10 @@ class MetricCacheProcessor:
         pdm_closed_trajectory = self._pdm_closed.compute_planner_trajectory(planner_input)
 
         observation = self._interpolate_gt_observation(scenario)
+        past_human_trajectory = InterpolatedTrajectory(
+            [ego_state for ego_state in scenario.get_ego_past_trajectory(0, 1.5)]
+        )
+        human_trajectory = self._extract_ego_future_trajectory(scenario)
 
         # save and dump features
         MetricCache(
@@ -229,6 +259,16 @@ class MetricCacheProcessor:
             self._pdm_closed._centerline,
             list(self._pdm_closed._route_lane_dict.keys()),
             self._pdm_closed._drivable_area_map,
+            scene_type=SceneFrameType.ORIGINAL,
+            human_trajectory=human_trajectory,
+            past_human_trajectory=past_human_trajectory,
+            map_parameters=MapParameters(
+                map_root=getattr(scenario, "map_root", ""),
+                map_version=getattr(scenario, "map_version", ""),
+                map_name=scenario.map_api.map_name,
+            ),
+            log_name=scenario.log_name,
+            timepoint=scenario.start_time,
         ).dump()
 
         # return metadata

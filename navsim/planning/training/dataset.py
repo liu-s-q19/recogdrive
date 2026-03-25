@@ -9,6 +9,11 @@ import uuid
 import torch
 from tqdm import tqdm
 import numpy.typing as npt
+from navsim.common.cache_metadata import (
+    V2_CACHE_SCHEMA_VERSION,
+    ensure_v2_cache_metadata,
+    write_cache_metadata,
+)
 from navsim.common.dataclasses import AgentInput, SensorConfig, Scene, Trajectory, Annotations
 from navsim.common.dataloader import SceneLoader
 from navsim.planning.training.abstract_feature_target_builder import AbstractFeatureBuilder, AbstractTargetBuilder
@@ -50,6 +55,8 @@ class CacheOnlyDataset(torch.utils.data.Dataset):
         feature_builders: List[AbstractFeatureBuilder],
         target_builders: List[AbstractTargetBuilder],
         log_names: Optional[List[str]] = None,
+        cache_loader_mode: str = "legacy_cached_features",
+        runtime_cache_version: str = V2_CACHE_SCHEMA_VERSION,
     ):
         """
         Initializes the dataset module.
@@ -61,6 +68,10 @@ class CacheOnlyDataset(torch.utils.data.Dataset):
         super().__init__()
         assert Path(cache_path).is_dir(), f"Cache path {cache_path} does not exist!"
         self._cache_path = Path(cache_path)
+        self._cache_loader_mode = cache_loader_mode
+        self._runtime_cache_version = runtime_cache_version
+        if self._cache_loader_mode == "navsim_v2_scene_loader":
+            ensure_v2_cache_metadata(self._cache_path, expected_schema_version=self._runtime_cache_version)
 
         if log_names is not None:
             self.log_names = [Path(log_name) for log_name in log_names if (self._cache_path / log_name).is_dir()]
@@ -154,6 +165,9 @@ class Dataset(torch.utils.data.Dataset):
         cache_path: Optional[str] = None,
         force_cache_computation: bool = False,
         is_decoder: bool = False,
+        cache_loader_mode: str = "legacy_cached_features",
+        runtime_cache_version: str = V2_CACHE_SCHEMA_VERSION,
+        train_test_split_name: str = "unknown",
     ):
         super().__init__()
         self._scene_loader = scene_loader
@@ -162,6 +176,11 @@ class Dataset(torch.utils.data.Dataset):
 
         self._cache_path: Optional[Path] = Path(cache_path) if cache_path else None
         self._force_cache_computation = force_cache_computation
+        self._cache_loader_mode = cache_loader_mode
+        self._runtime_cache_version = runtime_cache_version
+        self._train_test_split_name = train_test_split_name
+        if self._cache_loader_mode == "navsim_v2_scene_loader" and self._cache_path is not None and self._cache_path.is_dir():
+            ensure_v2_cache_metadata(self._cache_path, expected_schema_version=self._runtime_cache_version)
         self._valid_cache_paths: Dict[str, Path] = self._load_valid_caches(
             self._cache_path, feature_builders, target_builders
         )
@@ -262,6 +281,13 @@ class Dataset(torch.utils.data.Dataset):
 
         assert self._cache_path is not None, "Dataset did not receive a cache path!"
         os.makedirs(self._cache_path, exist_ok=True)
+        if self._cache_loader_mode == "navsim_v2_scene_loader":
+            write_cache_metadata(
+                cache_root=self._cache_path,
+                train_test_split=self._train_test_split_name,
+                scene_loader_mode=self._cache_loader_mode,
+                schema_version=self._runtime_cache_version,
+            )
 
         # determine tokens to cache
         if self._force_cache_computation:
@@ -789,4 +815,3 @@ class BoundingBox2DIndex(IntEnum):
     def STATE_SE2(cls):
         # assumes X, Y, HEADING have subsequent indices
         return slice(cls._X, cls._HEADING + 1)
-

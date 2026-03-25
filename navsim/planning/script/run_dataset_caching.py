@@ -25,6 +25,32 @@ logger = logging.getLogger(__name__)
 CONFIG_PATH = "config/training"
 CONFIG_NAME = "default_training"
 
+
+def _optional_path(value: Optional[str]) -> Optional[Path]:
+    return Path(value) if value else None
+
+
+def _build_scene_loader(cfg: DictConfig, scene_filter: SceneFilter, sensor_config: SensorConfig) -> SceneLoader:
+    cache_loader_mode = cfg.get("cache_loader_mode", "legacy_cached_features")
+    loader_kwargs = {
+        "data_path": Path(cfg.navsim_log_path),
+        "scene_filter": scene_filter,
+        "sensor_config": sensor_config,
+    }
+    if cache_loader_mode == "navsim_v2_scene_loader":
+        loader_kwargs.update(
+            {
+                "original_sensor_path": _optional_path(cfg.get("original_sensor_path")),
+                "synthetic_sensor_path": _optional_path(cfg.get("synthetic_sensor_path")),
+                "synthetic_scenes_path": _optional_path(cfg.get("synthetic_scenes_path")),
+            }
+        )
+    else:
+        loader_kwargs["sensor_blobs_path"] = _optional_path(
+            cfg.get("sensor_blobs_path", cfg.get("original_sensor_path"))
+        )
+    return SceneLoader(**loader_kwargs)
+
 def cache_features(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[Optional[Any]]:
     """
     缓存特征的辅助函数，已针对多机多卡优化
@@ -66,13 +92,8 @@ def cache_features(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[
     scene_filter: SceneFilter = instantiate(cfg.train_test_split.scene_filter)
     scene_filter.log_names = log_names
     scene_filter.tokens = tokens
-    scene_loader = SceneLoader(
-        sensor_blobs_path=Path(cfg.sensor_blobs_path),
-        data_path=Path(cfg.navsim_log_path),
-        scene_filter=scene_filter,
-        sensor_config=agent.get_sensor_config(),
-        load_image_path=True
-    )
+    scene_loader = _build_scene_loader(cfg, scene_filter, agent.get_sensor_config())
+    scene_loader.load_image_path = True
     
     logger.info(f"Node {node_id}, Rank {local_rank}: Processing {len(scene_loader.tokens)} scenarios.")
 
@@ -113,15 +134,7 @@ def main(cfg: DictConfig) -> None:
 
     logger.info("Building SceneLoader for main task partition")
     scene_filter: SceneFilter = instantiate(cfg.train_test_split.scene_filter)
-    data_path = Path(cfg.navsim_log_path)
-    sensor_blobs_path = Path(cfg.sensor_blobs_path)
-    
-    scene_loader = SceneLoader(
-        sensor_blobs_path=sensor_blobs_path,
-        data_path=data_path,
-        scene_filter=scene_filter,
-        sensor_config=SensorConfig.build_no_sensors(),
-    )
+    scene_loader = _build_scene_loader(cfg, scene_filter, SensorConfig.build_no_sensors())
 
     # 数据分发逻辑
     data_points = [

@@ -53,6 +53,7 @@ class ReCogDriveAgent(AbstractAgent):
         vlm_size: Optional[str] = 'large',  # VLM 的尺寸标记
         grpo_cfg: Optional[Any] = None,  # 新增这个参数接收命令行传入的配置
         rl_algo_type: str = "grpo", # [新增参数] 算法类型，默认为 'grpo'
+        cache_loader_mode: str = "legacy_cached_features",
     ):
         super().__init__()
         self._trajectory_sampling = trajectory_sampling
@@ -65,6 +66,7 @@ class ReCogDriveAgent(AbstractAgent):
         self._lr = lr
         self.grpo = grpo
         self.rl_algo_type = rl_algo_type
+        self.cache_loader_mode = cache_loader_mode
         self.grpo_cfg_override = grpo_cfg # 保存一下覆盖配置
         self.backbone = None # VLM 骨干网络实例，默认为 None
         self.metric_cache_path = metric_cache_path
@@ -124,6 +126,7 @@ class ReCogDriveAgent(AbstractAgent):
                         setattr(cfg.grpo_cfg, key, value)
             cfg.grpo_cfg.metric_cache_path = self.metric_cache_path
             cfg.grpo_cfg.reference_policy_checkpoint = self.reference_policy_checkpoint
+            cfg.grpo_cfg.scene_loader_mode = self.cache_loader_mode
             
         self.action_head = ReCogDriveDiffusionPlanner(cfg).cuda() # 实例化扩散规划器模型，并移动到 GPU
         # 推理时的一些配置
@@ -321,7 +324,7 @@ class ReCogDriveAgent(AbstractAgent):
         with torch.no_grad():
             predictions = self.forward(features)
             poses = predictions["pred_traj"].float().cpu().squeeze(0) # 获取预测轨迹
-        return Trajectory(poses) # 封装成 Trajectory 对象
+        return Trajectory(poses, self._trajectory_sampling) # 封装成 Trajectory 对象
 
     def compute_trajectory_vis(self, agent_input: AgentInput) -> Trajectory:
         """
@@ -341,7 +344,7 @@ class ReCogDriveAgent(AbstractAgent):
         with torch.no_grad():
             predictions = self.forward(features)
             poses = predictions["pred_traj"].float().cpu().squeeze(0)
-        return Trajectory(poses)
+        return Trajectory(poses, self._trajectory_sampling)
 
 
     def compute_loss(self, features: Dict[str, torch.Tensor], targets: Dict[str, torch.Tensor], predictions: Dict[str, torch.Tensor]) -> torch.Tensor:

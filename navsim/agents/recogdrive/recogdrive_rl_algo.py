@@ -43,7 +43,10 @@ class ReinforceAlgorithm(RLAlgorithm):
         self.gamma_denoising = config.gamma_denoising
 
         print(f"Loading Metric Cache from {config.metric_cache_path}")
-        self.metric_cache_loader = MetricCacheLoader(Path(config.metric_cache_path))
+        self.metric_cache_loader = MetricCacheLoader(
+            Path(config.metric_cache_path),
+            require_v2_metadata=config.scene_loader_mode == "navsim_v2_scene_loader",
+        )
         
         proposal_sampling = TrajectorySampling(time_horizon=4, interval_length=0.1)
         self.simulator = PDMSimulator(proposal_sampling)

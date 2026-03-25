@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple, BinaryIO, Union
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 import io
 import os
+import pickle
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -272,6 +274,9 @@ class SceneMetadata:
     num_history_frames: int
     num_future_frames: int
 
+    corresponding_original_scene: Optional[str] = None
+    corresponding_original_initial_token: Optional[str] = None
+
 
 @dataclass
 class Frame:
@@ -296,6 +301,8 @@ class Scene:
     scene_metadata: SceneMetadata
     map_api: AbstractMap
     frames: List[Frame]
+    extended_traffic_light_data: Optional[List[Any]] = None
+    extended_detections_tracks: Optional[List[Any]] = None
 
     def get_future_trajectory(self, num_trajectory_frames: Optional[int] = None) -> Trajectory:
         """
@@ -476,6 +483,104 @@ class Scene:
 
         return Scene(scene_metadata=scene_metadata, map_api=map_api, frames=frames)
 
+    def save_to_disk(self, data_path: Path) -> None:
+        """Save scene dataclass to disk without duplicating sensor blobs."""
+        assert self.scene_metadata.scene_token is not None, "Scene token cannot be None when saving to disk."
+        assert data_path.is_dir(), f"Data path {data_path} is not a directory."
+
+        frames_data = []
+        for frame in self.frames:
+            camera_dict = {}
+            for camera_field in fields(frame.cameras):
+                camera_name = camera_field.name
+                camera: Camera = getattr(frame.cameras, camera_name)
+                if camera.image is not None:
+                    camera_dict[camera_name] = {
+                        "data_path": getattr(camera.image, "name", None) or getattr(camera, "camera_path", None),
+                        "sensor2lidar_rotation": camera.sensor2lidar_rotation,
+                        "sensor2lidar_translation": camera.sensor2lidar_translation,
+                        "cam_intrinsic": camera.intrinsics,
+                        "distortion": camera.distortion,
+                    }
+                else:
+                    camera_dict[camera_name] = {}
+
+            frames_data.append(
+                {
+                    "token": frame.token,
+                    "timestamp": frame.timestamp,
+                    "roadblock_ids": frame.roadblock_ids,
+                    "traffic_lights": frame.traffic_lights,
+                    "annotations": asdict(frame.annotations),
+                    "ego_status": asdict(frame.ego_status),
+                    "lidar_path": None,
+                    "camera_dict": camera_dict,
+                }
+            )
+
+        scene_dict = {
+            "scene_metadata": asdict(self.scene_metadata),
+            "frames": frames_data,
+            "extended_traffic_light_data": self.extended_traffic_light_data,
+            "extended_detections_tracks": self.extended_detections_tracks,
+        }
+
+        save_path = data_path / f"{self.scene_metadata.scene_token}.pkl"
+        with save_path.open("wb") as file_obj:
+            pickle.dump(scene_dict, file_obj, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def load_from_disk(
+        cls,
+        file_path: Path,
+        sensor_blobs_path: Optional[Path],
+        sensor_config: Optional[SensorConfig] = None,
+    ) -> Scene:
+        """Load synthetic scene dataclass from disk."""
+        if sensor_config is None:
+            sensor_config = SensorConfig.build_no_sensors()
+
+        with file_path.open("rb") as file_obj:
+            scene_data = pickle.load(file_obj)
+
+        scene_metadata = SceneMetadata(**scene_data["scene_metadata"])
+        map_api = cls._build_map_api(scene_metadata.map_name)
+
+        scene_frames: List[Frame] = []
+        for frame_idx, frame_data in enumerate(scene_data["frames"]):
+            sensor_names = sensor_config.get_sensors_at_iteration(frame_idx)
+            lidar_path = Path(frame_data["lidar_path"]) if frame_data["lidar_path"] else None
+            lidar = Lidar.from_paths(
+                sensor_blobs_path=sensor_blobs_path,
+                lidar_path=lidar_path,
+                sensor_names=sensor_names,
+            )
+            cameras = Cameras.from_camera_dict(
+                sensor_blobs_path=sensor_blobs_path,
+                camera_dict=frame_data["camera_dict"],
+                sensor_names=sensor_names,
+            )
+            scene_frames.append(
+                Frame(
+                    token=frame_data["token"],
+                    timestamp=frame_data["timestamp"],
+                    roadblock_ids=frame_data["roadblock_ids"],
+                    traffic_lights=frame_data["traffic_lights"],
+                    annotations=Annotations(**frame_data["annotations"]),
+                    ego_status=EgoStatus(**frame_data["ego_status"]),
+                    lidar=lidar,
+                    cameras=cameras,
+                )
+            )
+
+        return Scene(
+            scene_metadata=scene_metadata,
+            map_api=map_api,
+            frames=scene_frames,
+            extended_traffic_light_data=scene_data.get("extended_traffic_light_data"),
+            extended_detections_tracks=scene_data.get("extended_detections_tracks"),
+        )
+
 
 @dataclass
 class SceneFilter:
@@ -489,6 +594,11 @@ class SceneFilter:
     max_scenes: Optional[int] = None
     log_names: Optional[List[str]] = None
     tokens: Optional[List[str]] = None
+    include_synthetic_scenes: bool = False
+    reactive_all_mapping: Optional[List[Any]] = None
+    synthetic_scene_tokens: Optional[List[str]] = None
+    reactive_synthetic_initial_tokens: Optional[List[str]] = None
+    non_reactive_synthetic_initial_tokens: Optional[List[str]] = None
     # TODO: expand filter options
 
     def __post_init__(self):
@@ -499,6 +609,15 @@ class SceneFilter:
         assert self.num_history_frames >= 1, "SceneFilter: num_history_frames must greater equal one."
         assert self.num_future_frames >= 0, "SceneFilter: num_future_frames must greater equal zero."
         assert self.frame_interval >= 1, "SceneFilter: frame_interval must greater equal one."
+
+        if (
+            not self.include_synthetic_scenes
+            and self.synthetic_scene_tokens is not None
+            and len(self.synthetic_scene_tokens) > 0
+        ):
+            warnings.warn(
+                "SceneFilter: synthetic_scene_tokens are provided but include_synthetic_scenes is False."
+            )
 
     @property
     def num_frames(self) -> int:

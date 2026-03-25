@@ -36,6 +36,32 @@ logger = logging.getLogger(__name__)
 CONFIG_PATH = "config/pdm_scoring"
 CONFIG_NAME = "default_run_pdm_score"
 
+
+def _optional_path(value: str):
+    return Path(value) if value else None
+
+
+def _build_scene_loader(cfg: DictConfig, scene_filter: SceneFilter, sensor_config: SensorConfig) -> SceneLoader:
+    cache_loader_mode = cfg.get("cache_loader_mode", "legacy_cached_features")
+    loader_kwargs = {
+        "data_path": Path(cfg.navsim_log_path),
+        "scene_filter": scene_filter,
+        "sensor_config": sensor_config,
+    }
+    if cache_loader_mode == "navsim_v2_scene_loader":
+        loader_kwargs.update(
+            {
+                "original_sensor_path": _optional_path(cfg.original_sensor_path),
+                "synthetic_sensor_path": _optional_path(cfg.get("synthetic_sensor_path")),
+                "synthetic_scenes_path": _optional_path(cfg.get("synthetic_scenes_path")),
+            }
+        )
+    else:
+        loader_kwargs["sensor_blobs_path"] = _optional_path(
+            cfg.get("sensor_blobs_path", cfg.get("original_sensor_path"))
+        )
+    return SceneLoader(**loader_kwargs)
+
 class InferenceSampler(torch.utils.data.sampler.Sampler):
     def __init__(self, size):
         self._size = int(size)
@@ -82,16 +108,15 @@ def run_pdm_score(args: List[Dict[str, Union[List[str], DictConfig]]]) -> List[D
     agent: AbstractAgent = instantiate(cfg.agent)
     agent.initialize()
 
-    metric_cache_loader = MetricCacheLoader(Path(cfg.metric_cache_path))
+    metric_cache_loader = MetricCacheLoader(
+        Path(cfg.metric_cache_path),
+        require_v2_metadata=cfg.get("cache_loader_mode", "legacy_cached_features") == "navsim_v2_scene_loader",
+        expected_schema_version=cfg.get("runtime_cache_version"),
+    )
     scene_filter: SceneFilter = instantiate(cfg.train_test_split.scene_filter)
     scene_filter.log_names = log_names
     scene_filter.tokens = tokens
-    scene_loader = SceneLoader(
-        sensor_blobs_path=Path(cfg.sensor_blobs_path),
-        data_path=Path(cfg.navsim_log_path),
-        scene_filter=scene_filter,
-        sensor_config=agent.get_sensor_config(),
-    )
+    scene_loader = _build_scene_loader(cfg, scene_filter, agent.get_sensor_config())
     train_data = Dataset(
         scene_loader=scene_loader,
         feature_builders=agent.get_feature_builders(),
@@ -204,14 +229,17 @@ def main(cfg: DictConfig) -> None:
     # metric_cache_loader = MetricCacheLoader(Path(cfg.metric_cache_path))
 
     # tokens_to_evaluate = list(set(scene_loader.tokens) & set(metric_cache_loader.tokens))
-    scene_loader = SceneLoader(
-            sensor_blobs_path=None,
-            data_path=Path(cfg.navsim_log_path),
-            scene_filter=instantiate(cfg.train_test_split.scene_filter),
-            sensor_config=SensorConfig.build_no_sensors(),
-        )
+    scene_loader = _build_scene_loader(
+        cfg,
+        instantiate(cfg.train_test_split.scene_filter),
+        SensorConfig.build_no_sensors(),
+    )
     if rank == 0:
-        metric_cache_loader = MetricCacheLoader(Path(cfg.metric_cache_path))
+        metric_cache_loader = MetricCacheLoader(
+            Path(cfg.metric_cache_path),
+            require_v2_metadata=cfg.get("cache_loader_mode", "legacy_cached_features") == "navsim_v2_scene_loader",
+            expected_schema_version=cfg.get("runtime_cache_version"),
+        )
         tokens_to_evaluate = list(set(scene_loader.tokens) & set(metric_cache_loader.tokens))
         tokens_to_evaluate = sorted(tokens_to_evaluate)  # 确保顺序一致
         #tokens_to_evaluate = tokens_to_evaluate[:1000] #for test

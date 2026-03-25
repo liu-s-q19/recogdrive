@@ -10,6 +10,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 import torch.distributed as dist
 from navsim.agents.abstract_agent import AbstractAgent
+from navsim.common.cache_metadata import resolve_train_test_split_name
 from navsim.common.dataclasses import SceneFilter
 from navsim.common.dataloader import SceneLoader
 from navsim.planning.training.dataset import CacheOnlyDataset, Dataset
@@ -23,6 +24,31 @@ logger = logging.getLogger(__name__)
 CONFIG_PATH = "config/training"
 CONFIG_NAME = "default_training"
 
+
+def _optional_path(value: str):
+    return Path(value) if value else None
+
+
+def _build_scene_loader(cfg: DictConfig, scene_filter: SceneFilter, agent: AbstractAgent) -> SceneLoader:
+    cache_loader_mode = cfg.get("cache_loader_mode", "legacy_cached_features")
+    loader_kwargs = {
+        "data_path": Path(cfg.navsim_log_path),
+        "scene_filter": scene_filter,
+        "sensor_config": agent.get_sensor_config(),
+    }
+    if cache_loader_mode == "navsim_v2_scene_loader":
+        loader_kwargs.update(
+            {
+                "original_sensor_path": _optional_path(cfg.original_sensor_path),
+                "synthetic_sensor_path": _optional_path(cfg.get("synthetic_sensor_path")),
+                "synthetic_scenes_path": _optional_path(cfg.get("synthetic_scenes_path")),
+            }
+        )
+    else:
+        loader_kwargs["sensor_blobs_path"] = _optional_path(
+            cfg.get("sensor_blobs_path", cfg.get("original_sensor_path"))
+        )
+    return SceneLoader(**loader_kwargs)
 
 
 def custom_collate_fn(
@@ -77,22 +103,8 @@ def build_datasets(cfg: DictConfig, agent: AbstractAgent) -> Tuple[Dataset, Data
     else:
         val_scene_filter.log_names = cfg.val_logs
 
-    data_path = Path(cfg.navsim_log_path)
-    sensor_blobs_path = Path(cfg.sensor_blobs_path)
-
-    train_scene_loader = SceneLoader(
-        sensor_blobs_path=sensor_blobs_path,
-        data_path=data_path,
-        scene_filter=train_scene_filter,
-        sensor_config=agent.get_sensor_config(),
-    )
-
-    val_scene_loader = SceneLoader(
-        sensor_blobs_path=sensor_blobs_path,
-        data_path=data_path,
-        scene_filter=val_scene_filter,
-        sensor_config=agent.get_sensor_config(),
-    )
+    train_scene_loader = _build_scene_loader(cfg, train_scene_filter, agent)
+    val_scene_loader = _build_scene_loader(cfg, val_scene_filter, agent)
 
     train_data = Dataset(
         scene_loader=train_scene_loader,
@@ -100,6 +112,9 @@ def build_datasets(cfg: DictConfig, agent: AbstractAgent) -> Tuple[Dataset, Data
         target_builders=agent.get_target_builders(),
         cache_path=cfg.cache_path,
         force_cache_computation=cfg.force_cache_computation,
+        cache_loader_mode=cfg.get("cache_loader_mode", "legacy_cached_features"),
+        runtime_cache_version=cfg.get("runtime_cache_version"),
+        train_test_split_name=resolve_train_test_split_name(cfg),
     )
 
     val_data = Dataset(
@@ -108,6 +123,9 @@ def build_datasets(cfg: DictConfig, agent: AbstractAgent) -> Tuple[Dataset, Data
         target_builders=agent.get_target_builders(),
         cache_path=cfg.cache_path,
         force_cache_computation=cfg.force_cache_computation,
+        cache_loader_mode=cfg.get("cache_loader_mode", "legacy_cached_features"),
+        runtime_cache_version=cfg.get("runtime_cache_version"),
+        train_test_split_name=resolve_train_test_split_name(cfg),
     )
 
     return train_data, val_data
@@ -156,12 +174,16 @@ def main(cfg: DictConfig) -> None:
             feature_builders=agent.get_feature_builders(),
             target_builders=agent.get_target_builders(),
             log_names=cfg.train_logs,
+            cache_loader_mode=cfg.get("cache_loader_mode", "legacy_cached_features"),
+            runtime_cache_version=cfg.get("runtime_cache_version"),
         )
         val_data = CacheOnlyDataset(
             cache_path=cfg.cache_path,
             feature_builders=agent.get_feature_builders(),
             target_builders=agent.get_target_builders(),
             log_names=cfg.val_logs,
+            cache_loader_mode=cfg.get("cache_loader_mode", "legacy_cached_features"),
+            runtime_cache_version=cfg.get("runtime_cache_version"),
         )
     else:
         logger.info("Building SceneLoader")
