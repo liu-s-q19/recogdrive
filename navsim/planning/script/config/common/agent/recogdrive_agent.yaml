@@ -19,3 +19,4 @@ reference_policy_checkpoint: ''
 vlm_size: 'large'
 grpo: False
 lr: 1e-4
+cache_loader_mode: legacy_cached_features

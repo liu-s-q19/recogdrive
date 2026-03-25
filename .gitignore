@@ -65,3 +65,4 @@ data/
 cache/
 outputs/
 infer_latencytest/
+task/

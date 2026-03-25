@@ -58,6 +58,16 @@ Recent studies have explored leveraging the world knowledge and cognitive capabi
 - [Preparation of ReCogDrive environment](docs/Installation.md)
 - [ReCogDrive Training and Evaluation](docs/Train_Eval.md)
 
+### Isolated NavSim v2 Line
+
+The NavSim v2 migration line is expected to run from:
+
+- code: `/data/liushiqi/recogdrive-navsimv2`
+- runtime: `/data/liushiqi/recogdrive-navsimv2-runtime`
+- conda env: `navsimv2-recogdrive`
+
+Use `scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_navhard_two_stage.sh` for the default `navhard_two_stage` evaluation path. Keep `TRAIN_TEST_SPLIT=navtest` with `scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_8b.sh` as the explicit one-stage fallback.
+
 ## Checkpoint
 
 > Results on NAVSIM
@@ -218,4 +228,3 @@ If you find ReCogDrive is useful in your research or applications, please consid
   year={2025}
 }
 ```
-

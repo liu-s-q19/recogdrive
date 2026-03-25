@@ -1,5 +1,64 @@
 # ReCogDrive Training and Evaluation
 
+## NavSim v2 Isolated Workflow
+
+For the isolated NavSim v2 migration line, use these defaults:
+
+```bash
+conda activate navsimv2-recogdrive
+export PROJECT_ROOT=/data/liushiqi/recogdrive-navsimv2
+export RUNTIME_ROOT=/data/liushiqi/recogdrive-navsimv2-runtime
+export NAVSIM_EXP_ROOT=$RUNTIME_ROOT/exp
+export NAVSIM_OUTPUT_ROOT=$RUNTIME_ROOT/outputs
+export TMPDIR=$RUNTIME_ROOT/tmp
+export OPENSCENE_DATA_ROOT=/data/dataset/navsim
+```
+
+- New v2 metric caches must be rebuilt under the isolated runtime root and now require `cache_meta.json` with schema `navsim_v2_recogdrive_1`.
+- The default two-stage evaluation path is `scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_navhard_two_stage.sh`.
+- Runnable one-stage fallback for `navtest` remains available through `scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_8b.sh` with `TRAIN_TEST_SPLIT=navtest`.
+- Do not reuse the old `/data/liushiqi/recogdrive/exp`, `/data/liushiqi/recogdrive/outputs`, or `/data/liushiqi/recogdrive/exp/tmp` roots for NavSim v2 runs.
+- Default `navhard_two_stage` synthetic assets on this machine are:
+  - `/readOnly/df_l2.9/navsim/navhard_two_stage/sensor_blobs`
+  - `/readOnly/df_l2.9/navsim/navhard_two_stage/synthetic_scene_pickles`
+- Default `navhard_two_stage` metric cache root is:
+  - `/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733`
+- Legacy `navtrain` hidden-state caches under `/data/liushiqi/recogdrive/exp/recogdrive_agent_cache_dir_train` remain training-only fallback inputs for `legacy_cached_features`; do not use them as `navhard_two_stage` evaluation caches.
+
+To generate the isolated `navhard_two_stage` hidden-state cache:
+
+```bash
+SESSION_NAME=cache-navhard-hidden
+tmux new-session -d -s "${SESSION_NAME}" \
+  "cd /data/liushiqi/recogdrive-navsimv2 && \
+   source /data/miniconda/etc/profile.d/conda.sh && \
+   conda activate navsimv2-recogdrive && \
+   bash scripts/cache_dataset/run_caching_recogdrive_hidden_state_navhard_two_stage.sh \
+   > /data/liushiqi/recogdrive-navsimv2-runtime/outputs/${SESSION_NAME}.log 2>&1"
+```
+
+This writes hidden-state features to `/data/liushiqi/recogdrive-navsimv2-runtime/exp/recogdrive_agent_cache_dir_navhard_two_stage` by default and keeps the runtime output isolated from the legacy repo.
+
+If you need to reuse an external v2 metric cache root that already has `metadata/*.csv` but does not ship `cache_meta.json`, adopt it explicitly before running strict v2 evaluation:
+
+```bash
+/data/miniconda/envs/navsimv2-recogdrive/bin/python \
+  /data/liushiqi/recogdrive-navsimv2/navsim/planning/script/run_prepare_metric_cache_metadata.py \
+  --cache-root /data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733 \
+  --train-test-split navhard_two_stage \
+  --scene-loader-mode navsim_v2_scene_loader \
+  --runtime-cache-version navsim_v2_recogdrive_1
+```
+
+Then point the existing strict navhard evaluation entrypoint at that adopted root:
+
+```bash
+METRIC_CACHE_PATH=/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733 \
+bash scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_navhard_two_stage.sh
+```
+
+This is an explicit external-cache adoption flow, not a relaxation of the default v2 cache contract. Rebuilding caches under the isolated runtime root is still the preferred path.
+
 ## Stage 1: Vision-Language Models Driving Pretraining
 
 First, you need to download **13 QA datasets** (e.g., *DriveLM*, *LingoQA*, etc.) as mentioned in the paper.  
@@ -126,4 +185,3 @@ sh evaluation/run_recogdrive_agent_pdm_score_evaluation_2b_no_hidden_state.sh
 
 ```
 This will evaluate your trained agent using **PDM scores** on the navtest.
-

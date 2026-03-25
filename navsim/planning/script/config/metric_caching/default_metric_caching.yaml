@@ -18,4 +18,3 @@ cache:
   force_feature_computation: false
 
 output_dir: ${cache.cache_path}/metadata
-navsim_log_path: ${oc.env:OPENSCENE_DATA_ROOT}/navsim_logs/${train_test_split.data_split} # path to log annotations

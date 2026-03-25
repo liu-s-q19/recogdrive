@@ -1,6 +1,7 @@
 # Default common configs
 
 defaults:
+  - default_dataset_paths
   - train_test_split: ???
   # Worker that is used to run simulations
   - worker: ray_distributed_no_torch
