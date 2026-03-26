@@ -9,6 +9,7 @@ from navsim.agents.abstract_agent import AgentInput
 from navsim.planning.training.abstract_feature_target_builder import AbstractFeatureBuilder, AbstractTargetBuilder
 from navsim.common.dataclasses import Scene, Trajectory
 from nuplan.planning.simulation.trajectory.trajectory_sampling import TrajectorySampling
+from .command_utils import resolve_navigation_command
 from .recogdrive_backbone import RecogDriveBackbone
 from .utils.internvl_preprocess import load_image
 
@@ -112,8 +113,7 @@ class ReCogDriveFeatureBuilder(AbstractFeatureBuilder):
                 - Each point format: (x:float, y:float, heading:float)
             '''
 
-            navigation_commands = ['turn left', 'go straight', 'turn right']
-            command_str = next((navigation_commands[i] for i, v in enumerate(high_command_one_hot) if v == 1), "unknown")
+            command_str = resolve_navigation_command(high_command_one_hot.tolist())
             history_str = " ".join([f'   - t-{3-i}: ({format_number(history_trajectory[i, 0].item())}, {format_number(history_trajectory[i, 1].item())}, {format_number(history_trajectory[i, 2].item())})' for i in range(4)])
             
             prompt = f"<image>\nAs an autonomous driving system, predict the vehicle's trajectory based on:\n1. Visual perception from front camera view\n2. Historical motion context (last 4 timesteps):{history_str}\n3. Active navigation command: [{command_str.upper()}]"

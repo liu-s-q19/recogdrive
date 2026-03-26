@@ -452,8 +452,12 @@ class PDMScorer:
 
         polygons = creation.polygons(coords_exterior_time_steps)
 
+        # TTC looks ahead into the future, so the last few proposal steps cannot be scored safely
+        # when the observation horizon only covers the proposal horizon itself.
+        n_proposal_steps_to_evaluate = self.proposal_sampling.num_poses - max(future_time_idcs)
+
         # check collision for each proposal and projection
-        for time_idx in range(self.proposal_sampling.num_poses + 1):
+        for time_idx in range(n_proposal_steps_to_evaluate + 1):
             for step_idx, future_time_idx in enumerate(future_time_idcs):
                 current_time_idx = time_idx + future_time_idx
                 polygons_at_time_step = polygons[:, time_idx, step_idx]

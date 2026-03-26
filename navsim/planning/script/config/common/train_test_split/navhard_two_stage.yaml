@@ -1,6 +1,7 @@
 defaults:
 - scene_filter: navhard_two_stage
 data_split: test
+original_sensor_split: test_ini
 reactive_all_mapping:
 - - '4a919f7ea2f65200'
   - 'd715fbc6ea0551f8'

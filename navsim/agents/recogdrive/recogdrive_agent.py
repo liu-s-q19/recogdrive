@@ -19,12 +19,14 @@ from nuplan.planning.simulation.trajectory.trajectory_sampling import Trajectory
 from .utils.internvl_preprocess import load_image  # 加载和预处理 VLM 所需图像的工具函数
 from .utils.lr_scheduler import WarmupCosLR  # 自定义的带预热warmup的余弦退火学习率调度器
 from .utils.utils import format_number, build_from_configs
+from .command_utils import NAVIGATION_COMMANDS, resolve_navigation_command
 from .recogdrive_features import ReCogDriveFeatureBuilder ,TrajectoryTargetBuilder  # 【核心】特征和目标的构建器
 from .recogdrive_backbone import RecogDriveBackbone  # 【核心】第一部分：VLM 骨干网络，负责“认知”
 from .recogdrive_diffusion_planner import (  # 【核心】第二部分：扩散模型规划器，负责“规划”
     ReCogDriveDiffusionPlanner,
     ReCogDriveDiffusionPlannerConfig,
 )
+from .recogdrive_checkpointing import resolve_reference_policy_checkpoint
 from .recogdrive_rl_algo import ReinforceAlgorithm, ReinforcePlusPlusAlgorithm
 
 class ReCogDriveAgent(AbstractAgent):
@@ -59,6 +61,7 @@ class ReCogDriveAgent(AbstractAgent):
         self._trajectory_sampling = trajectory_sampling
         self.vlm_path = vlm_path
         self.checkpoint_path = checkpoint_path
+        self.cam_type = cam_type
         self.vlm_type = vlm_type
         self.dit_type = dit_type
         self.cache_mode = cache_mode
@@ -70,7 +73,10 @@ class ReCogDriveAgent(AbstractAgent):
         self.grpo_cfg_override = grpo_cfg # 保存一下覆盖配置
         self.backbone = None # VLM 骨干网络实例，默认为 None
         self.metric_cache_path = metric_cache_path
-        self.reference_policy_checkpoint = reference_policy_checkpoint
+        self.reference_policy_checkpoint = resolve_reference_policy_checkpoint(
+            checkpoint_path=checkpoint_path,
+            reference_policy_checkpoint=reference_policy_checkpoint,
+        )
         self.vlm_size = vlm_size
         
         # --- 缓存隐藏状态学习（VLM 的加载时机）---
@@ -135,23 +141,9 @@ class ReCogDriveAgent(AbstractAgent):
 
         # GRPO 算法初始化逻辑
         self.rl_algo = None
+        self._grpo_cfg = cfg.grpo_cfg if self.grpo else None
         if self.grpo:
-            # 1. 定义算法映射表
-            ALGO_MAP = {
-                "reinforce": ReinforceAlgorithm,
-                "reinforce_plus_plus": ReinforcePlusPlusAlgorithm,
-            }
-
-            # 2. 获取对应的类
-            algo_class = ALGO_MAP.get(self.rl_algo_type.lower())
-            
-            if algo_class is None:
-                raise ValueError(f"Unknown rl_algo_type: {self.rl_algo_type}. Supported: {list(ALGO_MAP.keys())}")
-
-            print(f"✅ [Agent] Initializing RL Algorithm: {algo_class.__name__}")
-
-            # 3. 实例化 (接口统一，所以参数一样)
-            self.rl_algo = algo_class(cfg.grpo_cfg, self.action_head)
+            self._initialize_rl_algo()
 
     def name(self) -> str:
         return self.__class__.__name__
@@ -175,8 +167,46 @@ class ReCogDriveAgent(AbstractAgent):
                     filtered_ckpt[k2] = v
             # 'strict=False' ----允许只加载部分权重
             self.load_state_dict(filtered_ckpt, strict=False)
+        if self.grpo:
+            self._initialize_rl_algo()
+
+    def _initialize_rl_algo(self) -> None:
+        if self.rl_algo is not None:
+            return
+
+        algo_map = {
+            "reinforce": ReinforceAlgorithm,
+            "reinforce_plus_plus": ReinforcePlusPlusAlgorithm,
+        }
+        algo_class = algo_map.get(self.rl_algo_type.lower())
+        if algo_class is None:
+            raise ValueError(f"Unknown rl_algo_type: {self.rl_algo_type}. Supported: {list(algo_map.keys())}")
+
+        self.reference_policy_checkpoint = resolve_reference_policy_checkpoint(
+            checkpoint_path=self.checkpoint_path,
+            reference_policy_checkpoint=self.reference_policy_checkpoint,
+        )
+        if self._grpo_cfg is not None:
+            self._grpo_cfg.reference_policy_checkpoint = self.reference_policy_checkpoint
+
+        print(f"✅ [Agent] Initializing RL Algorithm: {algo_class.__name__}")
+        print(f"✅ [Agent] Student init checkpoint: {self.checkpoint_path or '<random init>'}")
+        print(f"✅ [Agent] Reference checkpoint: {self.reference_policy_checkpoint or '<student init state>'}")
+        self.rl_algo = algo_class(self._grpo_cfg, self.action_head)
 
     def get_sensor_config(self) -> SensorConfig:
+        if self.cam_type == "single":
+            return SensorConfig(
+                cam_f0=[0, 1, 2, 3],
+                cam_l0=False,
+                cam_l1=False,
+                cam_l2=False,
+                cam_r0=False,
+                cam_r1=False,
+                cam_r2=False,
+                cam_b0=False,
+                lidar_pc=False,
+            )
         return SensorConfig.build_all_sensors(include=[0, 1, 2, 3])
 
     def get_target_builders(self) -> List[AbstractTargetBuilder]:
@@ -243,9 +273,12 @@ class ReCogDriveAgent(AbstractAgent):
             
             # 2d. 构建文本提示（prompts）
             # 1 指令映射
-            navigation_commands = ['turn left', 'go straight', 'turn right'] 
             command_indices = torch.argmax(high_command_one_hot, dim=-1)
-            command_str_list = [navigation_commands[idx.item()] for idx in command_indices]
+            command_str_list = [
+                NAVIGATION_COMMANDS[idx.item()] if idx.item() < len(NAVIGATION_COMMANDS)
+                else resolve_navigation_command(high_command_one_hot[i].tolist())
+                for i, idx in enumerate(command_indices)
+            ]
             # 2 存储每个 batch 样本的 prompt
             questions = [] 
             batch_size = high_command_one_hot.shape[0]

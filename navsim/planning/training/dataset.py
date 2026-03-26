@@ -122,6 +122,8 @@ class CacheOnlyDataset(torch.utils.data.Dataset):
 
         for log_name in tqdm(log_names, desc="Loading Valid Caches"):
             log_path = cache_path / log_name
+            if not log_path.is_dir():
+                continue
             for token_path in log_path.iterdir():
                 found_caches: List[bool] = []
                 for builder in feature_builders + target_builders:
@@ -206,6 +208,8 @@ class Dataset(torch.utils.data.Dataset):
 
         if (cache_path is not None) and cache_path.is_dir():
             for log_path in cache_path.iterdir():
+                if not log_path.is_dir():
+                    continue
                 for token_path in log_path.iterdir():
                     found_caches: List[bool] = []
                     for builder in feature_builders + target_builders:
@@ -380,6 +384,8 @@ class Dataset_For_Traj(torch.utils.data.Dataset):
 
         if (cache_path is not None) and cache_path.is_dir():
             for log_path in cache_path.iterdir():
+                if not log_path.is_dir():
+                    continue
                 for token_path in log_path.iterdir():
                     found_caches: List[bool] = []
                     for builder in feature_builders + target_builders:
@@ -532,6 +538,8 @@ class Dataset_For_Pipeline(torch.utils.data.Dataset):
 
         if (cache_path is not None) and cache_path.is_dir():
             for log_path in cache_path.iterdir():
+                if not log_path.is_dir():
+                    continue
                 for token_path in log_path.iterdir():
                     found_caches: List[bool] = []
                     for builder in feature_builders + target_builders:

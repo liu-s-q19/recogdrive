@@ -315,10 +315,18 @@ class Scene:
             num_trajectory_frames = self.scene_metadata.num_future_frames
 
         start_frame_idx = self.scene_metadata.num_history_frames - 1
+        max_frame_idx = len(self.frames) - 1
 
         global_ego_poses = []
-        for frame_idx in range(start_frame_idx, start_frame_idx + num_trajectory_frames + 1):
+        end_frame_idx = min(start_frame_idx + num_trajectory_frames, max_frame_idx)
+        for frame_idx in range(start_frame_idx, end_frame_idx + 1):
             global_ego_poses.append(self.frames[frame_idx].ego_status.ego_pose)
+
+        if len(global_ego_poses) == 0:
+            raise ValueError("Scene does not contain enough frames to build a future trajectory.")
+
+        while len(global_ego_poses) < num_trajectory_frames + 1:
+            global_ego_poses.append(global_ego_poses[-1].copy())
 
         local_ego_poses = convert_absolute_to_relative_se2_array(
             StateSE2(*global_ego_poses[0]), np.array(global_ego_poses[1:], dtype=np.float64)
@@ -535,10 +543,14 @@ class Scene:
         file_path: Path,
         sensor_blobs_path: Optional[Path],
         sensor_config: Optional[SensorConfig] = None,
+        lidar_sensor_blobs_path: Optional[Path] = None,
+        load_image_path: bool = False,
     ) -> Scene:
         """Load synthetic scene dataclass from disk."""
         if sensor_config is None:
             sensor_config = SensorConfig.build_no_sensors()
+        if lidar_sensor_blobs_path is None:
+            lidar_sensor_blobs_path = sensor_blobs_path
 
         with file_path.open("rb") as file_obj:
             scene_data = pickle.load(file_obj)
@@ -551,7 +563,7 @@ class Scene:
             sensor_names = sensor_config.get_sensors_at_iteration(frame_idx)
             lidar_path = Path(frame_data["lidar_path"]) if frame_data["lidar_path"] else None
             lidar = Lidar.from_paths(
-                sensor_blobs_path=sensor_blobs_path,
+                sensor_blobs_path=lidar_sensor_blobs_path,
                 lidar_path=lidar_path,
                 sensor_names=sensor_names,
             )
@@ -559,6 +571,7 @@ class Scene:
                 sensor_blobs_path=sensor_blobs_path,
                 camera_dict=frame_data["camera_dict"],
                 sensor_names=sensor_names,
+                load_image_path=load_image_path,
             )
             scene_frames.append(
                 Frame(

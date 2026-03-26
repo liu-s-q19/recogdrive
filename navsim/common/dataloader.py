@@ -212,6 +212,8 @@ class SceneLoader:
                 file_path=self.synthetic_scenes[token][0],
                 sensor_blobs_path=self._synthetic_sensor_path,
                 sensor_config=self._sensor_config,
+                lidar_sensor_blobs_path=self._original_sensor_path,
+                load_image_path=self.load_image_path,
             )
         return Scene.from_scene_dict_list(
             self.scene_frames_dicts[token],
@@ -234,6 +236,8 @@ class SceneLoader:
                 file_path=self.synthetic_scenes[token][0],
                 sensor_blobs_path=self._synthetic_sensor_path,
                 sensor_config=self._sensor_config,
+                lidar_sensor_blobs_path=self._original_sensor_path,
+                load_image_path=self.load_image_path,
             ).get_agent_input()
         return AgentInput.from_scene_dict_list(
             self.scene_frames_dicts[token],
