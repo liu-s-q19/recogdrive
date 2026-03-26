@@ -98,7 +98,7 @@ def _maybe_set_torch_sharing_strategy() -> None:
         logger.warning("Failed to set torch sharing strategy '%s': %s", strategy, e)
 
 
-def load_callbacks():
+def load_callbacks(cfg: DictConfig):
     callbacks = []
 
     use_ema = True
@@ -127,6 +127,7 @@ def load_callbacks():
         )
 
     callbacks.append(plc.LearningRateMonitor(logging_interval='epoch'))
+    callbacks.append(plc.TQDMProgressBar(refresh_rate=cfg.trainer.progress_bar_refresh_rate))
     return callbacks
 
 
@@ -286,7 +287,7 @@ def main(cfg: DictConfig) -> None:
     logger.info("Num validation samples: %d", len(val_data))
 
     logger.info("Building Trainer")
-    trainer = pl.Trainer(**cfg.trainer.params, callbacks=load_callbacks())
+    trainer = pl.Trainer(**cfg.trainer.params, callbacks=load_callbacks(cfg))
 
     logger.info("Starting Training")
     try:

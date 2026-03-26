@@ -65,11 +65,11 @@ export NAVSIM_DEVKIT_ROOT="${NAVSIM_DEVKIT_ROOT:-${PROJECT_ROOT}}"
 export OPENSCENE_DATA_ROOT="${OPENSCENE_DATA_ROOT:-${PROJECT_ROOT}/dataset/navsim}"
 
 VLM_PATH="${VLM_PATH:-$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B}"
-CACHE_PATH="${CACHE_PATH:-$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train}"
+CACHE_PATH="${CACHE_PATH:-/data/liushiqi/recogdrive/exp/recogdrive_agent_cache_dir_train}"
 METRIC_CACHE_PATH="${METRIC_CACHE_PATH:-$NAVSIM_EXP_ROOT/metric_cache_train}"
 
 # checkpoint auto resolve (prefer EMA)
-INIT_CHECKPOINT="${INIT_CHECKPOINT:-${CHECKPOINT:-${NAVSIM_OUTPUT_ROOT}/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}}"
+INIT_CHECKPOINT="${INIT_CHECKPOINT:-${CHECKPOINT:-/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}}"
 if [[ -d "${INIT_CHECKPOINT}" ]]; then
   DEFAULT_CKPT_DIR="${INIT_CHECKPOINT}"
 else
@@ -93,12 +93,15 @@ fi
 REFERENCE_POLICY_CHECKPOINT="${REFERENCE_POLICY_CHECKPOINT:-${INIT_CHECKPOINT}}"
 RESUME_CKPT_PATH="${RESUME_CKPT_PATH:-}"
 AUTO_RESUME_LATEST="${AUTO_RESUME_LATEST:-1}"
-CKPT_MONITOR="${CKPT_MONITOR:-val/loss_epoch}"
-CKPT_MODE="${CKPT_MODE:-min}"
-CKPT_SAVE_TOP_K="${CKPT_SAVE_TOP_K:-5}"
+CKPT_MONITOR="${CKPT_MONITOR:-null}"
+CKPT_MODE="${CKPT_MODE:-max}"
+CKPT_SAVE_TOP_K="${CKPT_SAVE_TOP_K:--1}"
 CKPT_EVERY_N_EPOCHS="${CKPT_EVERY_N_EPOCHS:-1}"
-CKPT_SAVE_LAST="${CKPT_SAVE_LAST:-false}"
+CKPT_SAVE_LAST="${CKPT_SAVE_LAST:-true}"
 CKPT_FILENAME="${CKPT_FILENAME:-}"
+if [[ -z "${CKPT_FILENAME}" ]]; then
+  CKPT_FILENAME='epoch={epoch:02d}-step={step}'
+fi
 
 RL_ALGO="${RL_ALGO:-reinforce_plus_plus}"
 OUTPUT_DIR="${OUTPUT_DIR:-${NAVSIM_OUTPUT_ROOT}/recogdrive_stage3_rl_rpp_3nodes_24gpus}"
@@ -144,9 +147,20 @@ EXTRA_OVERRIDES="${EXTRA_OVERRIDES:-}"
 
 CONDA_SH="${CONDA_SH:-/data/miniconda/etc/profile.d/conda.sh}"
 CONDA_ENV="${CONDA_ENV:-navsimv2-recogdrive}"
-CACHE_LOADER_MODE="${CACHE_LOADER_MODE:-navsim_v2_scene_loader}"
-USE_CACHE_WITHOUT_DATASET="${USE_CACHE_WITHOUT_DATASET:-false}"
+CACHE_LOADER_MODE="${CACHE_LOADER_MODE:-legacy_cached_features}"
+USE_CACHE_WITHOUT_DATASET="${USE_CACHE_WITHOUT_DATASET:-true}"
 TRAIN_ENTRY="${TRAIN_ENTRY:-$NAVSIM_DEVKIT_ROOT/navsim/planning/script/run_training_recogdrive_rl.py}"
+REAL_EVAL_ENABLED="${REAL_EVAL_ENABLED:-1}"
+REAL_EVAL_SPLIT="${REAL_EVAL_SPLIT:-navhard_two_stage}"
+REAL_EVAL_ASYNC_MODE="${REAL_EVAL_ASYNC_MODE:-tmux}"
+REAL_EVAL_POLL_INTERVAL_SEC="${REAL_EVAL_POLL_INTERVAL_SEC:-120}"
+REAL_EVAL_TOP_K="${REAL_EVAL_TOP_K:-3}"
+REAL_EVAL_KEEP_LAST="${REAL_EVAL_KEEP_LAST:-1}"
+REAL_EVAL_SCORE_DECIMALS="${REAL_EVAL_SCORE_DECIMALS:-6}"
+REAL_EVAL_GPUS="${REAL_EVAL_GPUS:-8}"
+REAL_EVAL_SESSION_PREFIX="${REAL_EVAL_SESSION_PREFIX:-eval-navhard-rpp}"
+REAL_EVAL_WATCHER_SCRIPT="${REAL_EVAL_WATCHER_SCRIPT:-${PROJECT_ROOT}/scripts/evaluation/watch_epoch9_and_eval.sh}"
+NAVHARD_METRIC_CACHE_PATH="${NAVHARD_METRIC_CACHE_PATH:-/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733}"
 
 SSH_OPTS=(
   -p "${SSH_PORT}"
@@ -226,6 +240,7 @@ echo "BC coeff:    ${GRPO_BC_COEFF} (anneal=${GRPO_BC_ANNEAL}, end=${GRPO_BC_COE
 echo "Ref KL coeff:${GRPO_REFERENCE_KL_COEFF}"
 echo "Resume auto: ${AUTO_RESUME_LATEST}"
 echo "Ckpt save:   top_k=${CKPT_SAVE_TOP_K} last=${CKPT_SAVE_LAST} every_n_epochs=${CKPT_EVERY_N_EPOCHS} monitor=${CKPT_MONITOR} mode=${CKPT_MODE}"
+echo "Real eval:   enabled=${REAL_EVAL_ENABLED} split=${REAL_EVAL_SPLIT} top_k=${REAL_EVAL_TOP_K}"
 echo "CUDA masks:  rank0=${RANK0_CUDA_VISIBLE_DEVICES:-<all>} rank1=${RANK1_CUDA_VISIBLE_DEVICES:-<all>} rank2=${RANK2_CUDA_VISIBLE_DEVICES:-<all>}"
 echo "Clean logs:  ${CLEAN_OLD_LOGS} (keep=${LOG_KEEP_RUNS})"
 echo "=================================================="
@@ -233,6 +248,35 @@ echo "=================================================="
 mkdir -p "${OUTPUT_DIR}"
 if [[ "${CLEAN_OLD_LOGS}" == "1" ]]; then
   cleanup_old_runs "${OUTPUT_DIR}" "${LOG_KEEP_RUNS}"
+fi
+
+if [[ "${REAL_EVAL_ENABLED}" == "1" && "${REAL_EVAL_ASYNC_MODE}" == "tmux" ]]; then
+  WATCHER_SESSION_NAME="${REAL_EVAL_SESSION_PREFIX}-$(basename "${OUTPUT_DIR}")"
+  if tmux has-session -t "${WATCHER_SESSION_NAME}" 2>/dev/null; then
+    tmux kill-session -t "${WATCHER_SESSION_NAME}"
+  fi
+  tmux new-session -d -s "${WATCHER_SESSION_NAME}" \
+    "cd '${PROJECT_ROOT}' && \
+     source '${CONDA_SH}' && \
+     conda activate '${CONDA_ENV}' && \
+     PROJECT_ROOT='${PROJECT_ROOT}' \
+     RUNTIME_ROOT='${RUNTIME_ROOT}' \
+     NAVSIM_EXP_ROOT='${NAVSIM_EXP_ROOT}' \
+     NAVSIM_OUTPUT_ROOT='${NAVSIM_OUTPUT_ROOT}' \
+     NAVHARD_METRIC_CACHE_PATH='${NAVHARD_METRIC_CACHE_PATH}' \
+     OPENSCENE_DATA_ROOT='${OPENSCENE_DATA_ROOT}' \
+     NUPLAN_MAPS_ROOT='${NUPLAN_MAPS_ROOT}' \
+     CONDA_ENV_NAME='${CONDA_ENV}' \
+     RUN_DIR='${OUTPUT_DIR}' \
+     TRAIN_TEST_SPLIT='${REAL_EVAL_SPLIT}' \
+     POLL_INTERVAL_SEC='${REAL_EVAL_POLL_INTERVAL_SEC}' \
+     REAL_EVAL_TOP_K='${REAL_EVAL_TOP_K}' \
+     REAL_EVAL_KEEP_LAST='${REAL_EVAL_KEEP_LAST}' \
+     REAL_EVAL_SCORE_DECIMALS='${REAL_EVAL_SCORE_DECIMALS}' \
+     REAL_EVAL_GPUS='${REAL_EVAL_GPUS}' \
+     SESSION_PREFIX='${REAL_EVAL_SESSION_PREFIX}' \
+     bash '${REAL_EVAL_WATCHER_SCRIPT}'"
+  echo "Watcher:     ${WATCHER_SESSION_NAME}"
 fi
 
 # ----------------- Step 0: ensure /dev/shm=128G everywhere -----------------
@@ -367,6 +411,7 @@ nohup torchrun \
   checkpoint.save_top_k="${CKPT_SAVE_TOP_K}" \
   checkpoint.every_n_epochs="${CKPT_EVERY_N_EPOCHS}" \
   checkpoint.save_last="${CKPT_SAVE_LAST}" \
+  checkpoint.filename="'${CKPT_FILENAME}'" \
   trainer.params.max_epochs="${MAX_EPOCHS}" \
   dataloader.params.batch_size="${DATALOADER_BATCH_SIZE}" \
   dataloader.params.num_workers="${DATALOADER_NUM_WORKERS}" \
@@ -382,7 +427,6 @@ nohup torchrun \
   force_cache_computation=False \
   worker=sequential \
   ${RESUME_CKPT_PATH:+resume_ckpt_path="'${RESUME_CKPT_PATH}'"} \
-  ${CKPT_FILENAME:+checkpoint.filename="${CKPT_FILENAME}"} \
   ${EXTRA_OVERRIDES} \
   > "${LOG_FILE}" 2>&1 &
 
@@ -480,6 +524,7 @@ MASTER_CMD=(torchrun
   checkpoint.save_top_k="${CKPT_SAVE_TOP_K}"
   checkpoint.every_n_epochs="${CKPT_EVERY_N_EPOCHS}"
   checkpoint.save_last="${CKPT_SAVE_LAST}"
+  checkpoint.filename="'${CKPT_FILENAME}'"
   trainer.params.max_epochs="${MAX_EPOCHS}"
   dataloader.params.batch_size="${DATALOADER_BATCH_SIZE}"
   dataloader.params.num_workers="${DATALOADER_NUM_WORKERS}"
@@ -495,7 +540,6 @@ MASTER_CMD=(torchrun
   force_cache_computation=False
   worker=sequential
   ${RESUME_CKPT_PATH:+resume_ckpt_path="'${RESUME_CKPT_PATH}'"}
-  ${CKPT_FILENAME:+checkpoint.filename="${CKPT_FILENAME}"}
   ${EXTRA_OVERRIDES})
 
 if [[ "${RUN_MASTER_BG}" == "1" ]]; then

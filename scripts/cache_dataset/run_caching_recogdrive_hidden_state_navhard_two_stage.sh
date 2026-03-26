@@ -41,7 +41,7 @@ torchrun \
     force_cache_computation=True \
     worker=sequential \
     navsim_log_path="$OPENSCENE_DATA_ROOT/navsim_logs/test" \
-    original_sensor_path="$OPENSCENE_DATA_ROOT/sensor_blobs/test" \
+    original_sensor_path="$OPENSCENE_DATA_ROOT/sensor_blobs/test_ini" \
     synthetic_sensor_path="$SYNTHETIC_SENSOR_PATH" \
     synthetic_scenes_path="$SYNTHETIC_SCENES_PATH" \
     agent=recogdrive_agent \

@@ -21,6 +21,14 @@ use_cache_without_dataset: false # load the training samples from the cache. sce
 force_cache_computation: true
 seed: 0
 
+checkpoint:
+  monitor: null
+  mode: max
+  save_top_k: -1
+  save_last: true
+  every_n_epochs: 1
+  filename: 'epoch={epoch:02d}-step={step}'
+
 dataloader:
   params:
     batch_size: 16  # number of samples per batch
@@ -30,10 +38,12 @@ dataloader:
     persistent_workers: true  # keep workers alive to reduce epoch-to-epoch overhead
 
 trainer:
+  progress_bar_refresh_rate: 10
   params:
     max_epochs: 100  # maximum number of training epochs
     check_val_every_n_epoch: 1  # run validation set every n training epochs
     val_check_interval: 1.0  # [%] run validation set every X% of training set
+    log_every_n_steps: 10
 
     limit_train_batches: 1.0  # how much of training dataset to check (float = fraction, int = num_batches)
     limit_val_batches: 1.0  # how much of validation dataset to check (float = fraction, int = num_batches)

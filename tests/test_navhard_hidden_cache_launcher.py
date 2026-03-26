@@ -24,6 +24,7 @@ def test_navhard_hidden_cache_launcher_uses_isolated_runtime_and_explicit_synthe
     assert 'export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"' in content
     assert 'SYNTHETIC_SENSOR_PATH="${SYNTHETIC_SENSOR_PATH:-/readOnly/df_l2.9/navsim/navhard_two_stage/sensor_blobs}"' in content
     assert 'SYNTHETIC_SCENES_PATH="${SYNTHETIC_SCENES_PATH:-/readOnly/df_l2.9/navsim/navhard_two_stage/synthetic_scene_pickles}"' in content
+    assert 'original_sensor_path="$OPENSCENE_DATA_ROOT/sensor_blobs/test_ini"' in content
     assert 'synthetic_sensor_path="$SYNTHETIC_SENSOR_PATH"' in content
     assert 'synthetic_scenes_path="$SYNTHETIC_SCENES_PATH"' in content
     assert 'agent.cache_hidden_state=True' in content

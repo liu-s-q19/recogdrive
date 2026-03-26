@@ -16,11 +16,12 @@ set -x
 TRAIN_TEST_SPLIT="${TRAIN_TEST_SPLIT:-navtest}"  # 评估集 Split
 
 export NUPLAN_MAP_VERSION="nuplan-maps-v1.0"
-export NUPLAN_MAPS_ROOT="$PROJECT_ROOT/dataset/navsim/maps"
+export NUPLAN_MAPS_ROOT="${NUPLAN_MAPS_ROOT:-$PROJECT_ROOT/dataset/navsim/maps}"
 export NAVSIM_EXP_ROOT="${NAVSIM_EXP_ROOT:-${RUNTIME_ROOT}/exp}"
 export NAVSIM_OUTPUT_ROOT="${NAVSIM_OUTPUT_ROOT:-${RUNTIME_ROOT}/outputs}"
-export NAVSIM_DEVKIT_ROOT="$PROJECT_ROOT"
+export NAVSIM_DEVKIT_ROOT="${NAVSIM_DEVKIT_ROOT:-$PROJECT_ROOT}"
 export OPENSCENE_DATA_ROOT="${OPENSCENE_DATA_ROOT:-$PROJECT_ROOT/dataset/navsim}"
+export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
 export TMPDIR="${TMPDIR:-${RUNTIME_ROOT}/tmp}"
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC="${TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC:-1800}"
 mkdir -p "${TMPDIR}"
@@ -43,10 +44,10 @@ echo "GPUS: ${GPUS}"
 
 # ----------------- 3. 关键模型路径 (请务必检查!) -----------------
 
-# [A] 你的训练产物 (Checkpoint)
-# 这是你刚刚训练完的模型。通常在 checkpoints 文件夹里会有 'last.ckpt' 或者 'epoch=xx.ckpt'
+# [A] 评测专用 Checkpoint
+# 这里只决定评估时加载哪一个模型，不参与 RL 训练阶段的 INIT/REFERENCE checkpoint 语义。
 # 如果你找不到这个文件，请去文件夹里确认一下具体名字！
-CHECKPOINT="${CHECKPOINT:-${NAVSIM_OUTPUT_ROOT}/recogdrive_stage2_training_ema_multinode_4nodes_8gpus/lightning_logs/version_1/checkpoints/epoch=99-step=8400-EMA.ckpt}"
+CHECKPOINT="${CHECKPOINT:-${NAVSIM_OUTPUT_ROOT}/recogdrive_stage2_training_v2_8gpus_latest/lightning_logs/version_0/checkpoints/last-EMA.ckpt}"
 
 # [B] VLM 权重 (第一阶段产物，保持不变)
 VLM_PATH="${VLM_PATH:-$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B}"
@@ -54,6 +55,7 @@ VLM_PATH="${VLM_PATH:-$PROJECT_ROOT/ckpt/ReCogDrive-VLM-8B}"
 # [C] 评估集缓存路径 (来自 run_caching_..._eval.sh)
 # 【注意】这个路径必须存在！如果你之前没跑通 eval 缓存脚本，这里会报错。
 CACHE_PATH_EVAL="${CACHE_PATH_EVAL:-$NAVSIM_EXP_ROOT/recogdrive_agent_cache_dir_train_test}"
+METRIC_CACHE_PATH="${METRIC_CACHE_PATH:-${NAVSIM_EXP_ROOT}/metric_cache}"
 
 # ----------------- 自动提取 EXP_NAME -----------------
 # 1. ${CHECKPOINT#*outputs/} : 从左边开始删除，直到找到 'outputs/' 为止
@@ -96,6 +98,7 @@ torchrun \
     agent.dit_type="small" \
     agent.cache_loader_mode="${CACHE_LOADER_MODE}" \
     cache_path=$CACHE_PATH_EVAL \
+    metric_cache_path=$METRIC_CACHE_PATH \
     cache_loader_mode="${CACHE_LOADER_MODE}" \
     use_cache_without_dataset=True \
     agent.sampling_method="ddim" \

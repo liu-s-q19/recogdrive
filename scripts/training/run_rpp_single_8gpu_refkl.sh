@@ -26,38 +26,51 @@ export TMPDIR="${TMPDIR:-${RUNTIME_ROOT}/tmp}"
 mkdir -p "${TMPDIR}"
 
 VLM_PATH="${VLM_PATH:-${PROJECT_ROOT}/ckpt/ReCogDrive-VLM-8B}"
-CACHE_PATH="${CACHE_PATH:-${NAVSIM_EXP_ROOT}/recogdrive_agent_cache_dir_train}"
+CACHE_PATH="${CACHE_PATH:-/data/liushiqi/recogdrive/exp/recogdrive_agent_cache_dir_train}"
 METRIC_CACHE_PATH="${METRIC_CACHE_PATH:-${NAVSIM_EXP_ROOT}/metric_cache_train}"
-CHECKPOINT="${CHECKPOINT:-${PROJECT_ROOT}/outputs/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}"
+INIT_CHECKPOINT="${INIT_CHECKPOINT:-${CHECKPOINT:-/data/liushiqi/recogdrive/outputs/recogdrive_stage2_training_ema_multinode_8gpus/lightning_logs/version_10/checkpoints}}"
 
-if [[ -d "${CHECKPOINT}" ]]; then
-  DEFAULT_CKPT_DIR="${CHECKPOINT}"
+if [[ -d "${INIT_CHECKPOINT}" ]]; then
+  DEFAULT_CKPT_DIR="${INIT_CHECKPOINT}"
 else
-  DEFAULT_CKPT_DIR="$(dirname "${CHECKPOINT}")"
+  DEFAULT_CKPT_DIR="$(dirname "${INIT_CHECKPOINT}")"
 fi
 
 DEFAULT_CKPT_EMA="${DEFAULT_CKPT_DIR}/last-EMA.ckpt"
 DEFAULT_CKPT_RAW="${DEFAULT_CKPT_DIR}/last.ckpt"
 
-if [[ -f "${CHECKPOINT}" ]]; then
+if [[ -f "${INIT_CHECKPOINT}" ]]; then
   :
 elif [[ -f "${DEFAULT_CKPT_EMA}" ]]; then
-  CHECKPOINT="${DEFAULT_CKPT_EMA}"
+  INIT_CHECKPOINT="${DEFAULT_CKPT_EMA}"
 elif [[ -f "${DEFAULT_CKPT_RAW}" ]]; then
-  CHECKPOINT="${DEFAULT_CKPT_RAW}"
+  INIT_CHECKPOINT="${DEFAULT_CKPT_RAW}"
 else
   echo "[ERROR] No checkpoint file found."
-  echo "        Input CHECKPOINT: ${CHECKPOINT}"
+  echo "        Input INIT_CHECKPOINT: ${INIT_CHECKPOINT}"
   echo "        Tried: ${DEFAULT_CKPT_EMA}"
   echo "        Tried: ${DEFAULT_CKPT_RAW}"
   exit 1
 fi
 
+REFERENCE_POLICY_CHECKPOINT="${REFERENCE_POLICY_CHECKPOINT:-${INIT_CHECKPOINT}}"
+
 OUTPUT_DIR="${OUTPUT_DIR:-${NAVSIM_OUTPUT_ROOT}/grpo/rpp1n8g_g16_bcfloor05_refkl002_${TS}}"
 mkdir -p "${OUTPUT_DIR}"
 LOG_FILE="${LOG_FILE:-${OUTPUT_DIR}/train_rank0_${TS}.log}"
-CACHE_LOADER_MODE="${CACHE_LOADER_MODE:-navsim_v2_scene_loader}"
-USE_CACHE_WITHOUT_DATASET="${USE_CACHE_WITHOUT_DATASET:-false}"
+CACHE_LOADER_MODE="${CACHE_LOADER_MODE:-legacy_cached_features}"
+USE_CACHE_WITHOUT_DATASET="${USE_CACHE_WITHOUT_DATASET:-true}"
+REAL_EVAL_ENABLED="${REAL_EVAL_ENABLED:-1}"
+REAL_EVAL_SPLIT="${REAL_EVAL_SPLIT:-navhard_two_stage}"
+REAL_EVAL_ASYNC_MODE="${REAL_EVAL_ASYNC_MODE:-tmux}"
+REAL_EVAL_POLL_INTERVAL_SEC="${REAL_EVAL_POLL_INTERVAL_SEC:-120}"
+REAL_EVAL_TOP_K="${REAL_EVAL_TOP_K:-3}"
+REAL_EVAL_KEEP_LAST="${REAL_EVAL_KEEP_LAST:-1}"
+REAL_EVAL_SCORE_DECIMALS="${REAL_EVAL_SCORE_DECIMALS:-6}"
+REAL_EVAL_GPUS="${REAL_EVAL_GPUS:-8}"
+REAL_EVAL_SESSION_PREFIX="${REAL_EVAL_SESSION_PREFIX:-eval-navhard-rpp}"
+REAL_EVAL_WATCHER_SCRIPT="${REAL_EVAL_WATCHER_SCRIPT:-${PROJECT_ROOT}/scripts/evaluation/watch_epoch9_and_eval.sh}"
+NAVHARD_METRIC_CACHE_PATH="${NAVHARD_METRIC_CACHE_PATH:-/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733}"
 
 GPUS_PER_NODE="${GPUS_PER_NODE:-8}"
 NNODES=1
@@ -67,11 +80,21 @@ MASTER_PORT="${MASTER_PORT:-29741}"
 
 RL_ALGO="${RL_ALGO:-reinforce_plus_plus}"
 MAX_EPOCHS="${MAX_EPOCHS:-10}"
+CKPT_MONITOR="${CKPT_MONITOR:-null}"
+CKPT_MODE="${CKPT_MODE:-max}"
+CKPT_SAVE_TOP_K="${CKPT_SAVE_TOP_K:--1}"
+CKPT_EVERY_N_EPOCHS="${CKPT_EVERY_N_EPOCHS:-1}"
+CKPT_SAVE_LAST="${CKPT_SAVE_LAST:-true}"
+CKPT_FILENAME="${CKPT_FILENAME:-}"
+if [[ -z "${CKPT_FILENAME}" ]]; then
+  CKPT_FILENAME='epoch={epoch:02d}-step={step}'
+fi
 DATALOADER_BATCH_SIZE="${DATALOADER_BATCH_SIZE:-8}"
 DATALOADER_NUM_WORKERS="${DATALOADER_NUM_WORKERS:-2}"
 DATALOADER_PREFETCH_FACTOR="${DATALOADER_PREFETCH_FACTOR:-1}"
 DATALOADER_PIN_MEMORY="${DATALOADER_PIN_MEMORY:-false}"
 DATALOADER_PERSISTENT_WORKERS="${DATALOADER_PERSISTENT_WORKERS:-false}"
+EXTRA_OVERRIDES="${EXTRA_OVERRIDES:-}"
 
 GRPO_GAMMA="${GRPO_GAMMA:-0.6}"
 GRPO_CLIP_LOW="${GRPO_CLIP_LOW:-0.00}"
@@ -105,12 +128,15 @@ echo "🚀 ReCogDrive Stage3 RL Single Node 8GPU (Ref-KL)"
 echo "=================================================="
 echo "Master:      ${MASTER_ADDR}:${MASTER_PORT}"
 echo "GPUs:        ${GPUS_PER_NODE}"
-echo "Checkpoint:  ${CHECKPOINT}"
+echo "Init ckpt:   ${INIT_CHECKPOINT}"
+echo "Ref ckpt:    ${REFERENCE_POLICY_CHECKPOINT}"
 echo "Output dir:  ${OUTPUT_DIR}"
 echo "Group size:  ${GRPO_SAMPLE_TIME}"
 echo "BC coeff:    ${GRPO_BC_COEFF} (anneal=${GRPO_BC_ANNEAL}, end=${GRPO_BC_COEFF_END}, epochs=${GRPO_BC_ANNEAL_EPOCHS})"
 echo "Ref KL coeff:${GRPO_REFERENCE_KL_COEFF}"
 echo "Log file:    ${LOG_FILE}"
+echo "Ckpt save:   top_k=${CKPT_SAVE_TOP_K} last=${CKPT_SAVE_LAST} every_n_epochs=${CKPT_EVERY_N_EPOCHS} monitor=${CKPT_MONITOR} mode=${CKPT_MODE}"
+echo "Real eval:   enabled=${REAL_EVAL_ENABLED} split=${REAL_EVAL_SPLIT} top_k=${REAL_EVAL_TOP_K}"
 echo "=================================================="
 
 DL_ARGS=()
@@ -120,6 +146,40 @@ if [[ "${DATALOADER_NUM_WORKERS}" -gt 0 ]]; then
 else
   DL_ARGS+=("dataloader.params.prefetch_factor=null")
   DL_ARGS+=("dataloader.params.persistent_workers=false")
+fi
+
+EXTRA_OVERRIDE_ARGS=()
+if [[ -n "${EXTRA_OVERRIDES}" ]]; then
+  read -r -a EXTRA_OVERRIDE_ARGS <<< "${EXTRA_OVERRIDES}"
+fi
+
+if [[ "${REAL_EVAL_ENABLED}" == "1" && "${REAL_EVAL_ASYNC_MODE}" == "tmux" ]]; then
+  WATCHER_SESSION_NAME="${REAL_EVAL_SESSION_PREFIX}-$(basename "${OUTPUT_DIR}")"
+  if tmux has-session -t "${WATCHER_SESSION_NAME}" 2>/dev/null; then
+    tmux kill-session -t "${WATCHER_SESSION_NAME}"
+  fi
+  tmux new-session -d -s "${WATCHER_SESSION_NAME}" \
+    "cd '${PROJECT_ROOT}' && \
+     source /data/miniconda/etc/profile.d/conda.sh && \
+     conda activate '${CONDA_ENV_NAME}' && \
+     PROJECT_ROOT='${PROJECT_ROOT}' \
+     RUNTIME_ROOT='${RUNTIME_ROOT}' \
+     NAVSIM_EXP_ROOT='${NAVSIM_EXP_ROOT}' \
+     NAVSIM_OUTPUT_ROOT='${NAVSIM_OUTPUT_ROOT}' \
+     NAVHARD_METRIC_CACHE_PATH='${NAVHARD_METRIC_CACHE_PATH}' \
+     OPENSCENE_DATA_ROOT='${OPENSCENE_DATA_ROOT}' \
+     NUPLAN_MAPS_ROOT='${NUPLAN_MAPS_ROOT}' \
+     CONDA_ENV_NAME='${CONDA_ENV_NAME}' \
+     RUN_DIR='${OUTPUT_DIR}' \
+     TRAIN_TEST_SPLIT='${REAL_EVAL_SPLIT}' \
+     POLL_INTERVAL_SEC='${REAL_EVAL_POLL_INTERVAL_SEC}' \
+     REAL_EVAL_TOP_K='${REAL_EVAL_TOP_K}' \
+     REAL_EVAL_KEEP_LAST='${REAL_EVAL_KEEP_LAST}' \
+     REAL_EVAL_SCORE_DECIMALS='${REAL_EVAL_SCORE_DECIMALS}' \
+     REAL_EVAL_GPUS='${REAL_EVAL_GPUS}' \
+     SESSION_PREFIX='${REAL_EVAL_SESSION_PREFIX}' \
+     bash '${REAL_EVAL_WATCHER_SCRIPT}'"
+  echo "Watcher:     ${WATCHER_SESSION_NAME}"
 fi
 
 torchrun \
@@ -155,14 +215,20 @@ torchrun \
   +agent.grpo_cfg.scorer_config.comfortable_weight="${SCORE_COMFORT}" \
   agent.cache_hidden_state=True \
   agent.vlm_type="internvl" \
-  agent.checkpoint_path="${CHECKPOINT}" \
-  agent.reference_policy_checkpoint="${CHECKPOINT}" \
+  agent.checkpoint_path="'${INIT_CHECKPOINT}'" \
+  agent.reference_policy_checkpoint="'${REFERENCE_POLICY_CHECKPOINT}'" \
   agent.cache_loader_mode="${CACHE_LOADER_MODE}" \
   agent.dit_type="small" \
   agent.sampling_method="ddim" \
   agent.metric_cache_path="${METRIC_CACHE_PATH}" \
   cache_loader_mode="${CACHE_LOADER_MODE}" \
-  auto_resume_latest=false \
+  checkpoint.monitor="${CKPT_MONITOR}" \
+  checkpoint.mode="${CKPT_MODE}" \
+  checkpoint.save_top_k="${CKPT_SAVE_TOP_K}" \
+  checkpoint.every_n_epochs="${CKPT_EVERY_N_EPOCHS}" \
+  checkpoint.save_last="${CKPT_SAVE_LAST}" \
+  checkpoint.filename="'${CKPT_FILENAME}'" \
+  +auto_resume_latest=false \
   trainer.params.max_epochs="${MAX_EPOCHS}" \
   dataloader.params.batch_size="${DATALOADER_BATCH_SIZE}" \
   dataloader.params.num_workers="${DATALOADER_NUM_WORKERS}" \
@@ -177,4 +243,5 @@ torchrun \
   use_cache_without_dataset="${USE_CACHE_WITHOUT_DATASET}" \
   force_cache_computation=False \
   worker=sequential \
+  "${EXTRA_OVERRIDE_ARGS[@]}" \
   > "${LOG_FILE}" 2>&1

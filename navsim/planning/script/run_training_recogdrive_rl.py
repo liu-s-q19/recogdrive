@@ -2,6 +2,7 @@ from typing import Tuple
 from pathlib import Path
 import logging
 import os
+from typing import Any, Dict, List, Optional
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -17,7 +18,6 @@ from navsim.planning.training.dataset import CacheOnlyDataset, Dataset
 from navsim.planning.training.agent_lightning_module import AgentLightningModule, AgentLightningDiT
 import torch
 import torch.nn.utils.rnn as rnn_utils
-from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,35 @@ CONFIG_NAME = "default_training"
 
 def _optional_path(value: str):
     return Path(value) if value else None
+
+
+def _build_checkpoint_callback(cfg: DictConfig) -> pl.callbacks.ModelCheckpoint:
+    checkpoint_cfg = cfg.get("checkpoint")
+    if checkpoint_cfg.monitor in ("", "null", "None", None):
+        return pl.callbacks.ModelCheckpoint(
+            save_top_k=checkpoint_cfg.save_top_k,
+            save_last=checkpoint_cfg.save_last,
+            every_n_epochs=checkpoint_cfg.every_n_epochs,
+            filename=checkpoint_cfg.filename,
+            auto_insert_metric_name=False,
+        )
+
+    return pl.callbacks.ModelCheckpoint(
+        monitor=checkpoint_cfg.monitor,
+        mode=checkpoint_cfg.mode,
+        save_top_k=checkpoint_cfg.save_top_k,
+        save_last=checkpoint_cfg.save_last,
+        every_n_epochs=checkpoint_cfg.every_n_epochs,
+        filename=checkpoint_cfg.filename,
+        auto_insert_metric_name=False,
+    )
+
+
+def _build_trainer_callbacks(cfg: DictConfig) -> List[pl.callbacks.Callback]:
+    return [
+        _build_checkpoint_callback(cfg),
+        pl.callbacks.TQDMProgressBar(refresh_rate=cfg.trainer.progress_bar_refresh_rate),
+    ]
 
 
 def _build_scene_loader(cfg: DictConfig, scene_filter: SceneFilter, agent: AbstractAgent) -> SceneLoader:
@@ -225,7 +254,7 @@ def main(cfg: DictConfig) -> None:
     logger.info("Building Trainer")
     trainer = pl.Trainer(
         **cfg.trainer.params, 
-        callbacks=[pl.callbacks.ModelCheckpoint(monitor="val/loss_epoch", mode='min', save_top_k=5, every_n_epochs=1)],
+        callbacks=_build_trainer_callbacks(cfg),
         logger=pl_logger
     )
 
