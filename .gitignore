@@ -66,3 +66,4 @@ cache/
 outputs/
 infer_latencytest/
 task/
+recogdrive-navsimv2-runtime

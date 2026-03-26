@@ -40,6 +40,7 @@ Prefer environment variables over hardcoded absolute paths in scripts:
 Runtime data defaults for the current machine:
 
 - Standard dataset root: `/data/dataset/navsim`
+- Default `navhard_two_stage` original sensor root: `/data/dataset/navsim/sensor_blobs/test_ini`
 - Default `navhard_two_stage` synthetic sensor root: `/readOnly/df_l2.9/navsim/navhard_two_stage/sensor_blobs`
 - Default `navhard_two_stage` synthetic scene root: `/readOnly/df_l2.9/navsim/navhard_two_stage/synthetic_scene_pickles`
 - Default `navhard_two_stage` metric cache root: `/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733`
@@ -85,6 +86,37 @@ tmux new-session -d -s "${SESSION_NAME}" \
 tmux ls
 tmux attach -t "${SESSION_NAME}"
 ```
+
+Validated full `navhard_two_stage` dedicated scorer command on this machine:
+
+```bash
+SESSION_NAME="eval-navhard-full"
+tmux new-session -d -s "${SESSION_NAME}" \
+  "cd /data/liushiqi/recogdrive-navsimv2 && \
+   source /data/miniconda/etc/profile.d/conda.sh && \
+   conda activate navsimv2-recogdrive && \
+   export PROJECT_ROOT=/data/liushiqi/recogdrive-navsimv2 \
+          RUNTIME_ROOT=/data/liushiqi/recogdrive-navsimv2-runtime \
+          NAVSIM_EXP_ROOT=/data/liushiqi/recogdrive-navsimv2-runtime/exp \
+          NAVSIM_OUTPUT_ROOT=/data/liushiqi/recogdrive-navsimv2-runtime/outputs \
+          TMPDIR=/data/liushiqi/recogdrive-navsimv2-runtime/tmp \
+          OPENSCENE_DATA_ROOT=/data/dataset/navsim \
+          NUPLAN_MAPS_ROOT=/data/dataset/navsim/maps \
+          METRIC_CACHE_PATH=/data/dataset/navsim/metric_cache_v2/navhard_two_stage_full_2026-03-09_03-37-22_n733 \
+          CHECKPOINT=/data/liushiqi/recogdrive/outputs/grpo/rpp1n8g_baseline_20260313_082058/lightning_logs/version_0/checkpoints/epoch=9-step=13300.ckpt \
+          GPUS=8 && \
+   bash scripts/evaluation/run_recogdrive_agent_pdm_score_evaluation_navhard_two_stage.sh \
+   > /data/liushiqi/recogdrive-navsimv2-runtime/outputs/${SESSION_NAME}.log 2>&1"
+
+tmux ls
+tmux attach -t "${SESSION_NAME}"
+```
+
+Successful output from that command currently lives under:
+
+- `/data/liushiqi/recogdrive-navsimv2-runtime/outputs/grpo/eval_navhard_two_stage`
+- `/data/liushiqi/recogdrive-navsimv2-runtime/outputs/grpo/eval_navhard_two_stage/2026.03.26.04.47.34.csv`
+- `/data/liushiqi/recogdrive-navsimv2-runtime/outputs/grpo/eval_navhard_two_stage/summary.json`
 
 Recommended `navhard_two_stage` hidden-cache session:
 
